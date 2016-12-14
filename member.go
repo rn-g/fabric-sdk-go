@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"sync"
 
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -147,28 +148,25 @@ func signProposal(proposal *pb.Proposal, enrollmentPrivateKey *ecdsa.PrivateKey)
 
 func SendPeersProposal(peers []*Peer, signedProposal *pb.SignedProposal) (map[string]*TransactionProposalResponse, error) {
 	transactionProposalResponseMap := make(map[string]*TransactionProposalResponse)
-	respQueue := make(chan *TransactionProposalResponse)
-	done := make(chan bool)
+	var wg sync.WaitGroup
 	for _, p := range peers {
-		go func(peer *Peer) {
+		wg.Add(1)
+		go func(peer *Peer, wg *sync.WaitGroup, tprm map[string]*TransactionProposalResponse) {
+			defer wg.Done()
 			var err error
 			var proposalResponse *pb.ProposalResponse
+			var transactionProposalResponse *TransactionProposalResponse
 			logger.Debugf("Send ProposalRequest to peer :%s\n", peer.Url)
 			if proposalResponse, err = peer.sendProposal(signedProposal); err != nil {
-				respQueue <- &TransactionProposalResponse{peer.Url, nil, fmt.Errorf("Error calling endorser '%s':  %s", peer.Url, err)}
-				return
+				logger.Debugf("Receive Error Response :%v\n", proposalResponse)
+				transactionProposalResponse = &TransactionProposalResponse{peer.Url, nil, fmt.Errorf("Error calling endorser '%s':  %s", peer.Url, err)}
+			} else {
+				logger.Debugf("Receive Proposal Response :%v\n", proposalResponse)
+				transactionProposalResponse = &TransactionProposalResponse{peer.Url, proposalResponse, nil}
 			}
-			respQueue <- &TransactionProposalResponse{peer.Url, proposalResponse, nil}
-		}(p)
+			tprm[transactionProposalResponse.Endorser] = transactionProposalResponse
+		}(p, &wg, transactionProposalResponseMap)
 	}
-	go func() {
-		for i := 0; i < len(peers); i++ {
-			result := <-respQueue
-			logger.Debugf("Receive ProposalResponse :%v\n", result)
-			transactionProposalResponseMap[result.Endorser] = result
-		}
-		done <- true
-	}()
-	<-done
+	wg.Wait()
 	return transactionProposalResponseMap, nil
 }
