@@ -43,7 +43,43 @@ func TestChainCodeInvoke(t *testing.T) {
 		if v.Err != nil {
 			t.Errorf("Endorser %s return error: %v", v.Endorser, v.Err)
 		}
-		fmt.Printf("Endorser '%s' return ProposalResponse: %v\n", v.Endorser, v.Proposal)
+		fmt.Printf("Endorser '%s' return ProposalResponse:%v\n", v.Endorser, v.Proposal.GetResponse())
+	}
+
+}
+
+func TestChainCodeQuery(t *testing.T) {
+	privateKey, err := loadEnrollmentPrivateKey()
+	if err != nil {
+		t.Errorf("loadEnrollmentPrivateKey return error: %v", err)
+	}
+	publicKey, err := loadEnrollmentPublicKey()
+	if err != nil {
+		t.Errorf("loadEnrollmentPublicKey return error: %v", err)
+	}
+	chain := CreateNewChain("testchain")
+	user := chain.GetMember("admin")
+	user.SetEnrollment(privateKey, publicKey)
+	var endorsers []*Peer
+	for _, peer := range config.GetPeersConfig() {
+		endorsers = append(endorsers, CreateNewPeer(fmt.Sprintf("%s:%s", peer.Host, peer.Port)))
+
+	}
+	var args []string
+	args = append(args, "query")
+	args = append(args, "b")
+	transactionProposalRequest := TransactionProposalRequest{Targets: endorsers, ChaincodeId: "mycc2", FunctionName: "invoke", Args: args,
+		ChainId: "**TEST_CHAINID**", TxId: util.GenerateUUID()}
+	transactionProposalResponse, err := user.SendTransactionProposal(transactionProposalRequest)
+	if err != nil {
+		t.Errorf("SendTransactionProposal return error: %v", err)
+	}
+
+	for _, v := range transactionProposalResponse {
+		if v.Err != nil {
+			t.Errorf("Endorser %s return error: %v", v.Endorser, v.Err)
+		}
+		fmt.Printf("Endorser '%s' return Query result: %v\n", v.Endorser, v.Proposal.GetResponse())
 	}
 
 }
