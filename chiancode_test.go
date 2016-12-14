@@ -22,12 +22,11 @@ func TestChainCodeInvoke(t *testing.T) {
 	chain := CreateNewChain("testchain")
 	user := chain.GetMember("admin")
 	user.SetEnrollment(privateKey, publicKey)
-	p1 := CreateNewPeer("localhost:7051")
-	p2 := CreateNewPeer("localhost:7056")
 	var endorsers []*Peer
-	endorsers = append(endorsers, p1)
-	endorsers = append(endorsers, p2)
+	for _, peer := range config.GetPeersConfig() {
+		endorsers = append(endorsers, CreateNewPeer(fmt.Sprintf("%s:%s", peer.Host, peer.Port)))
 
+	}
 	var args []string
 	args = append(args, "move")
 	args = append(args, "a")
