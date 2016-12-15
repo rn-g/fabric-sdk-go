@@ -34,7 +34,7 @@ func TestChainCodeInvoke(t *testing.T) {
 	args = append(args, "100")
 	transactionProposalRequest := TransactionProposalRequest{Targets: endorsers, ChaincodeId: "mycc2", FunctionName: "invoke", Args: args,
 		ChainId: "**TEST_CHAINID**", TxId: util.GenerateUUID()}
-	transactionProposalResponse, err := user.SendTransactionProposal(transactionProposalRequest)
+	transactionProposalResponse, _, err := user.SendTransactionProposal(transactionProposalRequest)
 	if err != nil {
 		t.Errorf("SendTransactionProposal return error: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestChainCodeQuery(t *testing.T) {
 	args = append(args, "b")
 	transactionProposalRequest := TransactionProposalRequest{Targets: endorsers, ChaincodeId: "mycc2", FunctionName: "invoke", Args: args,
 		ChainId: "**TEST_CHAINID**", TxId: util.GenerateUUID()}
-	transactionProposalResponse, err := user.SendTransactionProposal(transactionProposalRequest)
+	transactionProposalResponse, _, err := user.SendTransactionProposal(transactionProposalRequest)
 	if err != nil {
 		t.Errorf("SendTransactionProposal return error: %v", err)
 	}

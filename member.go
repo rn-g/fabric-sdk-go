@@ -72,29 +72,29 @@ func (m *Member) SetEnrollment(privateKey []byte, publicKey []byte) error {
 	return nil
 }
 
-func (m *Member) SendTransactionProposal(transactionProposalRequest TransactionProposalRequest) (map[string]*TransactionProposalResponse, error) {
+func (m *Member) SendTransactionProposal(transactionProposalRequest TransactionProposalRequest) (map[string]*TransactionProposalResponse, *pb.Proposal, error) {
 	logger.Debugf("Member.sendTransactionProposal - request:%v\n", transactionProposalRequest)
 
 	err := checkProposalRequest(transactionProposalRequest)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// create a proposal from a ChaincodeInvocationSpec
 	prop, err := protos_utils.CreateChaincodeProposal(transactionProposalRequest.TxId, transactionProposalRequest.ChainId, createCIS(transactionProposalRequest),
 		m.EnrollmentKeys.PublicKey)
 	if err != nil {
-		return nil, fmt.Errorf("Could not create chaincode proposal, err %s\n", err)
+		return nil, nil, fmt.Errorf("Could not create chaincode proposal, err %s\n", err)
 	}
 
 	signedProposal, err := signProposal(prop, m.EnrollmentKeys.EcdsaPrivateKey)
 	if err != nil {
-		return nil, fmt.Errorf("signProposal return error, err %s\n", err)
+		return nil, nil, fmt.Errorf("signProposal return error, err %s\n", err)
 	}
 	transactionProposalResponseMap, err := SendPeersProposal(transactionProposalRequest.Targets, signedProposal)
 	if err != nil {
-		return nil, fmt.Errorf("SendPeersProposal return error, err %s\n", err)
+		return nil, nil, fmt.Errorf("SendPeersProposal return error, err %s\n", err)
 	}
-	return transactionProposalResponseMap, nil
+	return transactionProposalResponseMap, prop, nil
 }
 
 func createCIS(transactionProposalRequest TransactionProposalRequest) *pb.ChaincodeInvocationSpec {
