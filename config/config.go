@@ -110,6 +110,13 @@ func GetSecurityLevel() int {
 	return viper.GetInt("security.level")
 
 }
+func GetOrdererHost() string {
+	return viper.GetString("orderer.host")
+}
+
+func GetOrdererPort() string {
+	return strconv.Itoa(viper.GetInt("orderer.port"))
+}
 
 func loadCAKey(rawData []byte) *x509.Certificate {
 	block, _ := pem.Decode(rawData)

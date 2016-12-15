@@ -150,6 +150,12 @@
 			"revisionTime": "2016-12-09T19:53:23Z"
 		},
 		{
+			"checksumSHA1": "QlNH/HcEhmDcfbNcTZL5qgBQ5LI=",
+			"path": "github.com/hyperledger/fabric/protos/orderer",
+			"revision": "32d3d7f6bed4937888f8d653f36814f7a4c31f0b",
+			"revisionTime": "2016-12-09T19:53:23Z"
+		},
+		{
 			"checksumSHA1": "xrxrRfxv8vZeAo0Cb/QIZd7Q+sU=",
 			"path": "github.com/hyperledger/fabric/protos/peer",
 			"revision": "32d3d7f6bed4937888f8d653f36814f7a4c31f0b",

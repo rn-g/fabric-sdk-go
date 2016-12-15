@@ -1,6 +1,7 @@
 package fabric_sdk_go
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -8,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	protos_utils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
@@ -36,9 +38,9 @@ type TransactionProposalRequest struct {
 }
 
 type TransactionProposalResponse struct {
-	Endorser string
-	Proposal *pb.ProposalResponse
-	Err      error
+	Endorser         string
+	ProposalResponse *pb.ProposalResponse
+	Err              error
 }
 
 type Enrollment struct {
@@ -53,8 +55,8 @@ type Enrollment struct {
  * @param {string} memberName - The member name.
  * @param {Chain} chain - The Chain object associated with this member.
  */
-func CreateNewMember(memberName string, chain Chain) *Member {
-	return &Member{Name: memberName, TcertBatchSize: chain.TcertBatchSize}
+func CreateNewMember(memberName string, chain *Chain) *Member {
+	return &Member{Name: memberName, Chain: chain, TcertBatchSize: chain.TcertBatchSize}
 }
 
 func (m *Member) SetEnrollment(privateKey []byte, publicKey []byte) error {
@@ -95,6 +97,28 @@ func (m *Member) SendTransactionProposal(transactionProposalRequest TransactionP
 		return nil, nil, fmt.Errorf("SendPeersProposal return error, err %s\n", err)
 	}
 	return transactionProposalResponseMap, prop, nil
+}
+
+func (m *Member) SendTransaction(proposal *pb.Proposal, resps []*pb.ProposalResponse) error {
+	logger.Debugf("Member.SendTransaction - proposal:%v\n", proposal)
+	if len(resps) < 1 {
+		return fmt.Errorf("Missing 'ProposalResponse'")
+	}
+	if proposal == nil {
+		return fmt.Errorf("Missing 'Proposal' object")
+	}
+	if m.Chain.Orderer == nil {
+		return fmt.Errorf("Member.sendTransaction - no orderer defined")
+	}
+	envelope, err := createSignedTx(proposal, m.EnrollmentKeys.EcdsaPrivateKey, resps)
+	if err != nil {
+		return err
+	}
+	err = m.Chain.Orderer.SendBroadcast(envelope)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func createCIS(transactionProposalRequest TransactionProposalRequest) *pb.ChaincodeInvocationSpec {
@@ -169,4 +193,106 @@ func SendPeersProposal(peers []*Peer, signedProposal *pb.SignedProposal) (map[st
 	}
 	wg.Wait()
 	return transactionProposalResponseMap, nil
+}
+
+// assemble an Envelope message from proposal, endorsements and a signer.
+// This function should be called by a client when it has collected enough endorsements
+// for a proposal to create a transaction and submit it to peers for ordering
+func createSignedTx(proposal *pb.Proposal, enrollmentPrivateKey *ecdsa.PrivateKey, resps []*pb.ProposalResponse) (*common.Envelope, error) {
+	if len(resps) == 0 {
+		return nil, fmt.Errorf("At least one proposal response is necessary")
+	}
+
+	// the original header
+	hdr, err := protos_utils.GetHeader(proposal.Header)
+	if err != nil {
+		return nil, fmt.Errorf("Could not unmarshal the proposal header")
+	}
+
+	// the original payload
+	pPayl, err := protos_utils.GetChaincodeProposalPayload(proposal.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("Could not unmarshal the proposal payload")
+	}
+
+	// get header extensions so we have the visibility field
+	hdrExt, err := protos_utils.GetChaincodeHeaderExtension(hdr)
+	if err != nil {
+		return nil, err
+	}
+
+	// ensure that all actions are bitwise equal and that they are successful
+	var a1 []byte
+	for n, r := range resps {
+		if n == 0 {
+			a1 = r.Payload
+			if r.Response.Status != 200 {
+				return nil, fmt.Errorf("Proposal response was not successful, error code %d, msg %s", r.Response.Status, r.Response.Message)
+			}
+			continue
+		}
+
+		if bytes.Compare(a1, r.Payload) != 0 {
+			return nil, fmt.Errorf("ProposalResponsePayloads do not match")
+		}
+	}
+
+	// fill endorsements
+	endorsements := make([]*pb.Endorsement, len(resps))
+	for n, r := range resps {
+		endorsements[n] = r.Endorsement
+	}
+
+	// create ChaincodeEndorsedAction
+	cea := &pb.ChaincodeEndorsedAction{ProposalResponsePayload: resps[0].Payload, Endorsements: endorsements}
+
+	// obtain the bytes of the proposal payload that will go to the transaction
+	propPayloadBytes, err := protos_utils.GetBytesProposalPayloadForTx(pPayl, hdrExt.PayloadVisibility)
+	if err != nil {
+		return nil, err
+	}
+
+	// get the bytes of the signature header, that will be the header of the TransactionAction
+	sHdrBytes, err := protos_utils.GetBytesSignatureHeader(hdr.SignatureHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	// serialize the chaincode action payload
+	cap := &pb.ChaincodeActionPayload{ChaincodeProposalPayload: propPayloadBytes, Action: cea}
+	capBytes, err := protos_utils.GetBytesChaincodeActionPayload(cap)
+	if err != nil {
+		return nil, err
+	}
+
+	// create a transaction
+	taa := &pb.TransactionAction{Header: sHdrBytes, Payload: capBytes}
+	taas := make([]*pb.TransactionAction, 1)
+	taas[0] = taa
+	tx := &pb.Transaction{Actions: taas}
+
+	// serialize the tx
+	txBytes, err := protos_utils.GetBytesTransaction(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	// create the payload
+	payl := &common.Payload{Header: hdr, Data: txBytes}
+	paylBytes, err := protos_utils.GetBytesPayload(payl)
+	if err != nil {
+		return nil, err
+	}
+
+	// sign the payload
+	err = primitives.SetSecurityLevel(config.GetSecurityAlgorithm(), config.GetSecurityLevel())
+	if err != nil {
+		return nil, err
+	}
+	signature, err := primitives.ECDSASign(enrollmentPrivateKey, paylBytes)
+	if err != nil {
+		return nil, err
+	}
+	// here's the envelope
+	return &common.Envelope{Payload: paylBytes, Signature: signature}, nil
 }

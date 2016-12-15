@@ -9,7 +9,7 @@ type Chain struct {
 	SecurityEnabled bool   // Security enabled flag
 	Members         map[string]*Member
 	TcertBatchSize  int // The number of tcerts to get in each batch
-
+	Orderer         *Orderer
 }
 
 /**
@@ -26,7 +26,7 @@ func (c Chain) GetMember(memberName string) *Member {
 	if val, ok := c.Members[memberName]; ok {
 		return val
 	}
-	m := CreateNewMember(memberName, c)
+	m := CreateNewMember(memberName, &c)
 	c.Members[memberName] = m
 	return m
 }

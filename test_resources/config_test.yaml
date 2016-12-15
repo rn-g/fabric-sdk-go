@@ -24,3 +24,7 @@ security:
 tcert:
   batch:
     size: 200
+
+orderer:
+  host: "localhost"
+  port: 7050
