@@ -1,7 +1,6 @@
 package fabric_sdk_go
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -222,19 +221,23 @@ func createSignedTx(proposal *pb.Proposal, enrollmentPrivateKey *ecdsa.PrivateKe
 	}
 
 	// ensure that all actions are bitwise equal and that they are successful
-	var a1 []byte
-	for n, r := range resps {
-		if n == 0 {
-			a1 = r.Payload
-			if r.Response.Status != 200 {
-				return nil, fmt.Errorf("Proposal response was not successful, error code %d, msg %s", r.Response.Status, r.Response.Message)
-			}
-			continue
+	//var a1 []byte
+	for _, r := range resps {
+		//		if n == 0 {
+		//			a1 = r.Payload
+		//			if r.Response.Status != 200 {
+		//				return nil, fmt.Errorf("Proposal response was not successful, error code %d, msg %s", r.Response.Status, r.Response.Message)
+		//			}
+		//			continue
+		//		}
+
+		if r.Response.Status != 200 {
+			return nil, fmt.Errorf("Proposal response was not successful, error code %d, msg %s", r.Response.Status, r.Response.Message)
 		}
 
-		if bytes.Compare(a1, r.Payload) != 0 {
-			return nil, fmt.Errorf("ProposalResponsePayloads do not match")
-		}
+		//		if bytes.Compare(a1, r.Payload) != 0 {
+		//			return nil, fmt.Errorf("ProposalResponsePayloads do not match")
+		//		}
 	}
 
 	// fill endorsements
