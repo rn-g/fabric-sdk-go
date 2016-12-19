@@ -220,30 +220,13 @@ func createSignedTx(proposal *pb.Proposal, enrollmentPrivateKey *ecdsa.PrivateKe
 		return nil, err
 	}
 
-	// ensure that all actions are bitwise equal and that they are successful
-	//var a1 []byte
-	for _, r := range resps {
-		//		if n == 0 {
-		//			a1 = r.Payload
-		//			if r.Response.Status != 200 {
-		//				return nil, fmt.Errorf("Proposal response was not successful, error code %d, msg %s", r.Response.Status, r.Response.Message)
-		//			}
-		//			continue
-		//		}
-
-		if r.Response.Status != 200 {
-			return nil, fmt.Errorf("Proposal response was not successful, error code %d, msg %s", r.Response.Status, r.Response.Message)
-		}
-
-		//		if bytes.Compare(a1, r.Payload) != 0 {
-		//			return nil, fmt.Errorf("ProposalResponsePayloads do not match")
-		//		}
-	}
-
 	// fill endorsements
-	endorsements := make([]*pb.Endorsement, len(resps))
-	for n, r := range resps {
-		endorsements[n] = r.Endorsement
+	var endorsements []*pb.Endorsement
+	for _, r := range resps {
+		if r.Response.Status == 200 {
+			endorsements = append(endorsements, r.Endorsement)
+
+		}
 	}
 
 	// create ChaincodeEndorsedAction
