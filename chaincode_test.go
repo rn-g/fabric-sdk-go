@@ -43,6 +43,7 @@ func TestChainCodeInvoke(t *testing.T) {
 	transactionProposalResponse, proposal, err := user.SendTransactionProposal(transactionProposalRequest)
 	if err != nil {
 		t.Errorf("SendTransactionProposal return error: %v", err)
+		return
 	}
 
 	var proposalResponses []*pb.ProposalResponse
@@ -56,9 +57,11 @@ func TestChainCodeInvoke(t *testing.T) {
 	err = user.SendTransaction(proposal, proposalResponses)
 	if err != nil {
 		t.Errorf("SendTransaction return error: %v", err)
+		return
+
 	}
 	fmt.Println("need to wait now for the committer to catch up")
-	time.Sleep(time.Second * 30)
+	time.Sleep(time.Second * 20)
 	valueAfterInvoke := getQueryValue(t, user)
 	fmt.Printf("*** QueryValue after invoke %s\n", valueAfterInvoke)
 
@@ -67,6 +70,8 @@ func TestChainCodeInvoke(t *testing.T) {
 	valueAfterInvokeInt, _ := strconv.Atoi(valueAfterInvoke)
 	if valueInt != valueAfterInvokeInt {
 		t.Errorf("SendTransaction didn't change the QueryValue")
+		return
+
 	}
 
 }
