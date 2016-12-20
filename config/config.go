@@ -5,6 +5,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strconv"
 
 	"github.com/op/go-logging"
@@ -23,6 +24,9 @@ type PeerConfig struct {
 }
 
 var log = logging.MustGetLogger("fabric_sdk_go")
+var format = logging.MustStringFormatter(
+	`%{color}%{time:15:04:05.000} [%{module}] %{level:.4s} : %{message}`,
+)
 
 // initConfig reads in config file
 func InitConfig(configFile string) error {
@@ -43,12 +47,13 @@ func InitConfig(configFile string) error {
 		//		})
 
 	}
-	var format = logging.MustStringFormatter(`%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`)
+	backend := logging.NewLogBackend(os.Stderr, "", 0)
+	backendFormatter := logging.NewBackendFormatter(backend, format)
 
-	logging.SetFormatter(format)
+	backendLeveled := logging.AddModuleLevel(backendFormatter)
 	loggingLevelString := viper.GetString("logging.level")
 	if loggingLevelString == "" {
-		logging.SetLevel(logging.INFO, "fabric_sdk_go")
+		backendLeveled.SetLevel(logging.INFO, "fabric_sdk_go")
 	} else {
 		log.Infof("fabric_sdk_go Logging level: %v", loggingLevelString)
 
@@ -56,8 +61,10 @@ func InitConfig(configFile string) error {
 		if err != nil {
 			panic(err)
 		}
-		logging.SetLevel(logLevel, "fabric_sdk_go")
+		backendLeveled.SetLevel(logLevel, "fabric_sdk_go")
 	}
+	// Set the backends to be used.
+	logging.SetBackend(backendLeveled)
 	return nil
 }
 
