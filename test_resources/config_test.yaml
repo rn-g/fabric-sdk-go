@@ -28,3 +28,6 @@ tcert:
 orderer:
   host: "localhost"
   port: 7050
+
+logging:
+  level: info

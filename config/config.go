@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"strconv"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
@@ -23,7 +22,7 @@ type PeerConfig struct {
 	EventPort string
 }
 
-var myLogger = logging.MustGetLogger("config")
+var log = logging.MustGetLogger("fabric_sdk_go")
 
 // initConfig reads in config file
 func InitConfig(configFile string) error {
@@ -31,20 +30,34 @@ func InitConfig(configFile string) error {
 	if configFile != "" {
 		viper.SetConfigFile(configFile)
 		// If a config file is found, read it in.
-		err := viper.MergeInConfig()
+		err := viper.ReadInConfig()
 
 		if err == nil {
-			myLogger.Infof("Using config file: %s", viper.ConfigFileUsed())
+			log.Infof("Using config file: %s", viper.ConfigFileUsed())
 		} else {
 			return fmt.Errorf("Fatal error config file: %v", err)
 		}
-		viper.WatchConfig()
-		viper.OnConfigChange(func(e fsnotify.Event) {
-			myLogger.Infof("Config file changed: %s", e.Name)
-		})
+		//		viper.WatchConfig()
+		//		viper.OnConfigChange(func(e fsnotify.Event) {
+		//			log.Infof("Config file changed: %s", e.Name)
+		//		})
 
 	}
+	var format = logging.MustStringFormatter(`%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`)
 
+	logging.SetFormatter(format)
+	loggingLevelString := viper.GetString("logging.level")
+	if loggingLevelString == "" {
+		logging.SetLevel(logging.INFO, "fabric_sdk_go")
+	} else {
+		log.Infof("fabric_sdk_go Logging level: %v", loggingLevelString)
+
+		logLevel, err := logging.LogLevel(loggingLevelString)
+		if err != nil {
+			panic(err)
+		}
+		logging.SetLevel(logLevel, "fabric_sdk_go")
+	}
 	return nil
 }
 
