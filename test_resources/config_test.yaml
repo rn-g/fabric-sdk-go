@@ -1,4 +1,5 @@
-peers:
+client:
+ peers:
   peer1:
     host: "localhost"
     port: 7051
@@ -11,23 +12,23 @@ peers:
     event_host: "event_host2"
     event_port: 4
 
-tls:
+ tls:
   enabled: false
   certificate:
   serverhostoverride:
 
-security:
-  enabled: false
+ security:
+  enabled: true
   hashAlgorithm: SHA2
   level: 256
 
-tcert:
+ tcert:
   batch:
     size: 200
 
-orderer:
+ orderer:
   host: "localhost"
   port: 7050
 
-logging:
+ logging:
   level: info
