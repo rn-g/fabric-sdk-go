@@ -54,10 +54,6 @@ func TestChainCodeInvoke(t *testing.T) {
 		endorser := CreateNewPeer(fmt.Sprintf("%s:%s", p.Host, p.Port))
 		invokechain.AddPeer(endorser)
 	}
-	endorser := CreateNewPeer(fmt.Sprintf("%s:%s", "localhost", "7051"))
-	invokechain.AddPeer(endorser)
-	endorser = CreateNewPeer(fmt.Sprintf("%s:%s", "localhost", "7056"))
-	invokechain.AddPeer(endorser)
 
 	// Get Query value before invoke
 	value, err := getQueryValue(t, querychain)
