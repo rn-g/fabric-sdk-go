@@ -31,6 +31,9 @@ type User struct {
 	enrollmentCertificate *pem.Block
 }
 
+/**
+ * This structure temporary until we have tcerts
+ */
 type Enrollment struct {
 	PrivateKey      []byte
 	PublicKey       []byte
