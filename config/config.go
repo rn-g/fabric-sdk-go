@@ -47,30 +47,28 @@ func InitConfig(configFile string) error {
 		//		})
 
 	}
+
 	backend := logging.NewLogBackend(os.Stderr, "", 0)
 	backendFormatter := logging.NewBackendFormatter(backend, format)
 
-	backendLeveled := logging.AddModuleLevel(backendFormatter)
-	loggingLevelString := viper.GetString("logging.level")
-	if loggingLevelString == "" {
-		backendLeveled.SetLevel(logging.INFO, "fabric_sdk_go")
-	} else {
+	loggingLevelString := viper.GetString("client.logging.level")
+	logLevel := logging.INFO
+	if loggingLevelString != "" {
 		log.Infof("fabric_sdk_go Logging level: %v", loggingLevelString)
-
-		logLevel, err := logging.LogLevel(loggingLevelString)
+		var err error
+		logLevel, err = logging.LogLevel(loggingLevelString)
 		if err != nil {
 			panic(err)
 		}
-		backendLeveled.SetLevel(logLevel, "fabric_sdk_go")
 	}
-	// Set the backends to be used.
-	logging.SetBackend(backendLeveled)
+	logging.SetBackend(backendFormatter).SetLevel(logging.Level(logLevel), "fabric_sdk_go")
+
 	return nil
 }
 
 func GetPeersConfig() []PeerConfig {
 	peersConfig := []PeerConfig{}
-	peers := viper.GetStringMap("peers")
+	peers := viper.GetStringMap("client.peers")
 	for key, value := range peers {
 		mm := value.(map[interface{}]interface{})
 		host, _ := mm["host"].(string)
@@ -103,7 +101,7 @@ func IsTlsEnabled() bool {
 
 func GetTlsCACertPool() *x509.CertPool {
 	certPool := x509.NewCertPool()
-	if viper.GetString("tls.certificate") != "" {
+	if viper.GetString("client.tls.certificate") != "" {
 		rawData, err := ioutil.ReadFile(viper.GetString("tls.certificate"))
 		if err != nil {
 			panic(err)
@@ -114,28 +112,28 @@ func GetTlsCACertPool() *x509.CertPool {
 }
 
 func GetTlsServerHostOverride() string {
-	return viper.GetString("tls.serverhostoverride")
+	return viper.GetString("client.tls.serverhostoverride")
 }
 
 func IsSecurityEnabled() bool {
-	return viper.GetBool("security.enabled")
+	return viper.GetBool("client.security.enabled")
 }
 func TcertBatchSize() int {
-	return viper.GetInt("tcert.batch.size")
+	return viper.GetInt("client.tcert.batch.size")
 }
 func GetSecurityAlgorithm() string {
-	return viper.GetString("security.hashAlgorithm")
+	return viper.GetString("client.security.hashAlgorithm")
 }
 func GetSecurityLevel() int {
-	return viper.GetInt("security.level")
+	return viper.GetInt("client.security.level")
 
 }
 func GetOrdererHost() string {
-	return viper.GetString("orderer.host")
+	return viper.GetString("client.orderer.host")
 }
 
 func GetOrdererPort() string {
-	return strconv.Itoa(viper.GetInt("orderer.port"))
+	return strconv.Itoa(viper.GetInt("client.orderer.port"))
 }
 
 func loadCAKey(rawData []byte) *x509.Certificate {
