@@ -9,8 +9,8 @@ import (
 	"time"
 
 	pb "github.com/hyperledger/fabric/protos/peer"
-	config "sk-git.securekey.com/vme/fabric-sdk-go/config"
-	crypto "sk-git.securekey.com/vme/fabric-sdk-go/crypto"
+	config "github.com/hyperledger/fabric-sdk-go/config"
+	crypto "github.com/hyperledger/fabric-sdk-go/crypto"
 )
 
 func TestChainCodeInvoke(t *testing.T) {

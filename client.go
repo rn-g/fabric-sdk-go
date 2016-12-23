@@ -3,8 +3,8 @@ package fabric_sdk_go
 import (
 	"fmt"
 
-	crypto "sk-git.securekey.com/vme/fabric-sdk-go/crypto"
-	keysstore "sk-git.securekey.com/vme/fabric-sdk-go/keysstore"
+	crypto "github.com/hyperledger/fabric-sdk-go/crypto"
+	keysstore "github.com/hyperledger/fabric-sdk-go/keysstore"
 )
 
 /**

@@ -11,7 +11,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	config "sk-git.securekey.com/vme/fabric-sdk-go/config"
+	config "github.com/hyperledger/fabric-sdk-go/config"
 )
 
 /**

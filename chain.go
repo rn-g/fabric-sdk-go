@@ -11,7 +11,7 @@ import (
 	protos_utils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 
-	config "sk-git.securekey.com/vme/fabric-sdk-go/config"
+	config "github.com/hyperledger/fabric-sdk-go/config"
 )
 
 var logger = logging.MustGetLogger("fabric_sdk_go")
