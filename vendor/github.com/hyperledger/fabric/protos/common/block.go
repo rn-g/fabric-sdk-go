@@ -18,29 +18,41 @@ package common
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/common/util"
 )
 
-// NewBlock construct a block with no data and no metadata
+// NewBlock construct a block with no data and no metadata.
 func NewBlock(seqNum uint64, previousHash []byte) *Block {
 	block := &Block{}
 	block.Header = &BlockHeader{}
 	block.Header.Number = seqNum
 	block.Header.PreviousHash = previousHash
 	block.Data = &BlockData{}
-	block.Metadata = &BlockMetadata{}
+
+	var metadataContents [][]byte
+	for i := 0; i < len(BlockMetadataIndex_name); i++ {
+		metadataContents = append(metadataContents, []byte{})
+	}
+	block.Metadata = &BlockMetadata{Metadata: metadataContents}
+
 	return block
 }
 
-func (b *BlockHeader) Hash() []byte {
+// Bytes returns the marshaled representation of the block header.
+func (b *BlockHeader) Bytes() []byte {
 	data, err := proto.Marshal(b) // XXX this is wrong, protobuf is not the right mechanism to serialize for a hash
 	if err != nil {
 		panic("This should never fail and is generally irrecoverable")
 	}
-
-	return util.ComputeCryptoHash(data)
+	return data
 }
 
+// Hash returns the hash of the block header.
+func (b *BlockHeader) Hash() []byte {
+	return util.ComputeCryptoHash(b.Bytes())
+}
+
+// Hash returns the hash of the marshaled representation of the block data.
 func (b *BlockData) Hash() []byte {
 	data, err := proto.Marshal(b) // XXX this is wrong, protobuf is not the right mechanism to serialize for a hash, AND, it is not a MerkleTree hash
 	if err != nil {

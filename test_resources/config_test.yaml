@@ -19,7 +19,7 @@ client:
 
  security:
   enabled: true
-  hashAlgorithm: SHA2
+  hashAlgorithm: "SHA2"
   level: 256
 
  tcert:
@@ -32,3 +32,11 @@ client:
 
  logging:
   level: info
+
+ msp:
+  id: "DEFAULT"
+  url: "http://localhost:8888"
+  clientPath: "./test_resources/"
+
+ keystore:
+  path: "C:/keystore"

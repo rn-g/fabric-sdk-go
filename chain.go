@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/common/util"
+	msp "github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+
 	protos_utils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 
@@ -233,17 +237,19 @@ func (c *Chain) CreateTransactionProposal(chaincodeName string, chainId string, 
 		arry[i] = []byte(arg)
 	}
 
-	ccis := &pb.ChaincodeInvocationSpec{
-		ChaincodeSpec: &pb.ChaincodeSpec{
-			Type:        pb.ChaincodeSpec_GOLANG,
-			ChaincodeID: &pb.ChaincodeID{Name: chaincodeName},
-			CtorMsg:     &pb.ChaincodeInput{Args: arry}}}
+	ccis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{
+		Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: chaincodeName},
+		Input: &pb.ChaincodeInput{Args: arry}}}
 
 	txid := util.GenerateUUID()
 
+	serializedIdentity := &msp.SerializedIdentity{Mspid: config.GetMspId(), IdBytes: c.clientContext.GetUserContext("").GetEnrollmentCertificate()}
+	creatorId, err := proto.Marshal(serializedIdentity)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not Marshal serializedIdentity, err %s\n", err)
+	}
 	// create a proposal from a ChaincodeInvocationSpec
-	proposal, err := protos_utils.CreateChaincodeProposal(txid, chainId, ccis,
-		c.clientContext.GetUserContext().GetEnrollment().PublicKey)
+	proposal, err := protos_utils.CreateChaincodeProposal(txid, common.HeaderType_ENDORSER_TRANSACTION, chainId, ccis, creatorId)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Could not create chaincode proposal, err %s\n", err)
 	}
@@ -253,8 +259,12 @@ func (c *Chain) CreateTransactionProposal(chaincodeName string, chainId string, 
 		return nil, nil, err
 	}
 	cryptoSuite := c.clientContext.GetCryptoSuite()
-	signature, err := cryptoSuite.Sign(c.clientContext.GetUserContext().GetEnrollment().EcdsaPrivateKey,
-		proposalBytes, config.GetSecurityAlgorithm(), config.GetSecurityLevel())
+	digest, err := cryptoSuite.Hash(proposalBytes, &bccsp.SHAOpts{})
+	if err != nil {
+		return nil, nil, err
+	}
+	signature, err := cryptoSuite.Sign(c.clientContext.GetUserContext("").GetPrivateKey(),
+		digest, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -397,8 +407,14 @@ func (c *Chain) SendTransaction(proposal *pb.Proposal, tx *pb.Transaction) (map[
 		return nil, err
 	}
 
-	signature, err := c.clientContext.GetCryptoSuite().Sign(c.clientContext.userContext.enrollmentKeys.EcdsaPrivateKey,
-		paylBytes, config.GetSecurityAlgorithm(), config.GetSecurityLevel())
+	cryptoSuite := c.clientContext.GetCryptoSuite()
+	digest, err := cryptoSuite.Hash(paylBytes, &bccsp.SHAOpts{})
+	if err != nil {
+		return nil, err
+	}
+
+	signature, err := cryptoSuite.Sign(c.clientContext.GetUserContext("").GetPrivateKey(),
+		digest, nil)
 	if err != nil {
 		return nil, err
 	}

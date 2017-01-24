@@ -1,39 +1,61 @@
 package fabric_sdk_go
 
 import (
+	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"testing"
 	"time"
 
-	pb "github.com/hyperledger/fabric/protos/peer"
 	config "github.com/hyperledger/fabric-sdk-go/config"
-	crypto "github.com/hyperledger/fabric-sdk-go/crypto"
+	cop "github.com/hyperledger/fabric-sdk-go/cop"
+	"github.com/hyperledger/fabric/bccsp"
+	bccspFactory "github.com/hyperledger/fabric/bccsp/factory"
+
+	"github.com/hyperledger/fabric/bccsp/sw"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 func TestChainCodeInvoke(t *testing.T) {
 	// Configuration
-	privateKey, err := loadEnrollmentPrivateKey()
-	if err != nil {
-		t.Errorf("loadEnrollmentPrivateKey return error: %v", err)
-	}
-	publicKey, err := loadEnrollmentPublicKey()
-	if err != nil {
-		t.Errorf("loadEnrollmentPublicKey return error: %v", err)
-	}
 	client := NewClient()
-	cs_ecdsa_aes := crypto.CryptoSuite_ECDSA_AES{}
-	client.SetCryptoSuite(cs_ecdsa_aes)
-	user := NewUser("testuser")
-	user.SetEnrollment(privateKey, publicKey)
-	client.SetUserContext(user)
+
+	ks := &sw.FileBasedKeyStore{}
+	if err := ks.Init(nil, config.GetKeyStorePath(), false); err != nil {
+		t.Fatalf("Failed initializing key store [%s]", err)
+	}
+
+	cryptoSuite, err := bccspFactory.GetBCCSP(&bccspFactory.SwOpts{Ephemeral_: true, SecLevel: config.GetSecurityLevel(),
+		HashFamily: config.GetSecurityAlgorithm(), KeyStore: ks})
+	if err != nil {
+		t.Fatalf("Failed getting ephemeral software-based BCCSP [%s]", err)
+	}
+
+	client.SetCryptoSuite(cryptoSuite)
+	if client.GetUserContext("admin") == nil {
+		fcs, err := cop.NewFabricCOPServices(config.GetMspUrl(), config.GetMspClientPath())
+		if err != nil {
+			t.Fatalf("NewFabricCOPServices return error: %v", err)
+		}
+		key, cert, err := fcs.Enroll("admin", "adminpw")
+		block, _ := pem.Decode(key)
+		if err != nil {
+			t.Fatalf("Enroll return error: %v", err)
+		}
+		user := NewUser("admin")
+		k, err := client.GetCryptoSuite().KeyImport(block.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: false})
+		if err != nil {
+			t.Fatalf("KeyImport return error: %v", err)
+		}
+		user.SetPrivateKey(k)
+		user.SetEnrollmentCertificate(cert)
+		client.SetUserContext(user)
+	}
 
 	querychain, err := client.NewChain("querychain")
 	if err != nil {
-		t.Errorf("NewChain return error: %v", err)
-		return
+		t.Fatalf("NewChain return error: %v", err)
 	}
 
 	for _, p := range config.GetPeersConfig() {
@@ -44,8 +66,7 @@ func TestChainCodeInvoke(t *testing.T) {
 
 	invokechain, err := client.NewChain("invokechain")
 	if err != nil {
-		t.Errorf("NewChain return error: %v", err)
-		return
+		t.Fatalf("NewChain return error: %v", err)
 	}
 	orderer := CreateNewOrderer(fmt.Sprintf("%s:%s", config.GetOrdererHost(), config.GetOrdererPort()))
 	invokechain.AddOrderer(orderer)
@@ -58,15 +79,13 @@ func TestChainCodeInvoke(t *testing.T) {
 	// Get Query value before invoke
 	value, err := getQueryValue(t, querychain)
 	if err != nil {
-		t.Errorf("getQueryValue return error: %v", err)
-		return
+		t.Fatalf("getQueryValue return error: %v", err)
 	}
 	fmt.Printf("*** QueryValue before invoke %s\n", value)
 
 	err = invoke(t, invokechain)
 	if err != nil {
-		t.Errorf("invoke return error: %v", err)
-		return
+		t.Fatalf("invoke return error: %v", err)
 	}
 
 	fmt.Println("need to wait now for the committer to catch up")
@@ -82,8 +101,7 @@ func TestChainCodeInvoke(t *testing.T) {
 	valueInt = valueInt + 1
 	valueAfterInvokeInt, _ := strconv.Atoi(valueAfterInvoke)
 	if valueInt != valueAfterInvokeInt {
-		t.Errorf("SendTransaction didn't change the QueryValue")
-		return
+		t.Fatalf("SendTransaction didn't change the QueryValue")
 
 	}
 
@@ -95,7 +113,7 @@ func getQueryValue(t *testing.T, chain *Chain) (string, error) {
 	args = append(args, "invoke")
 	args = append(args, "query")
 	args = append(args, "b")
-	signedProposal, _, err := chain.CreateTransactionProposal("mycc2", "**TEST_CHAINID**", args, true)
+	signedProposal, _, err := chain.CreateTransactionProposal("mycc", "test_chainid", args, true)
 	if err != nil {
 		return "", fmt.Errorf("SendTransactionProposal return error: %v", err)
 	}
@@ -121,7 +139,7 @@ func invoke(t *testing.T, chain *Chain) error {
 	args = append(args, "a")
 	args = append(args, "b")
 	args = append(args, "1")
-	signedProposal, proposal, err := chain.CreateTransactionProposal("mycc2", "**TEST_CHAINID**", args, true)
+	signedProposal, proposal, err := chain.CreateTransactionProposal("mycc", "test_chainid", args, true)
 	if err != nil {
 		return fmt.Errorf("SendTransactionProposal return error: %v", err)
 	}
@@ -156,23 +174,6 @@ func invoke(t *testing.T, chain *Chain) error {
 	}
 	return nil
 
-}
-
-func loadEnrollmentPrivateKey() ([]byte, error) {
-	raw, err := ioutil.ReadFile("./test_resources/private.pem")
-	if err != nil {
-		return nil, err
-	}
-	return raw, nil
-
-}
-
-func loadEnrollmentPublicKey() ([]byte, error) {
-	raw, err := ioutil.ReadFile("./test_resources/public.pem")
-	if err != nil {
-		return nil, err
-	}
-	return raw, nil
 }
 
 func TestMain(m *testing.M) {

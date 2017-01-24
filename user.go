@@ -1,10 +1,7 @@
 package fabric_sdk_go
 
 import (
-	"crypto/ecdsa"
-	"crypto/x509"
-	"encoding/pem"
-	"fmt"
+	"github.com/hyperledger/fabric/bccsp"
 )
 
 /**
@@ -27,17 +24,8 @@ import (
 type User struct {
 	name                  string
 	roles                 []string
-	enrollmentKeys        *Enrollment
-	enrollmentCertificate *pem.Block
-}
-
-/**
- * This structure temporary until we have tcerts
- */
-type Enrollment struct {
-	PrivateKey      []byte
-	PublicKey       []byte
-	EcdsaPrivateKey *ecdsa.PrivateKey
+	PrivateKey            bccsp.Key // ****This key is temporary We use it to sign transaction until we have tcerts
+	enrollmentCertificate []byte
 }
 
 /**
@@ -76,40 +64,29 @@ func (u *User) SetRoles(roles []string) {
 /**
  * Returns the underlying ECert representing this user’s identity.
  */
-func (u *User) GetEnrollmentCertificate() *pem.Block {
+func (u *User) GetEnrollmentCertificate() []byte {
 	return u.enrollmentCertificate
 }
 
 /**
  * Set the user’s Enrollment Certificate.
  */
-func (u *User) SetEnrollmentCertificate(pem *pem.Block) {
-	u.enrollmentCertificate = pem
+func (u *User) SetEnrollmentCertificate(cert []byte) {
+	u.enrollmentCertificate = cert
 }
 
 /**
  * deprecated.
  */
-func (u *User) SetEnrollment(privateKey []byte, publicKey []byte) error {
-	pemkey, _ := pem.Decode(privateKey)
-	enrollmentPrivateKey, err := x509.ParsePKCS8PrivateKey(pemkey.Bytes)
-	if err != nil {
-		return err
-	}
-	ecPrivateKey, ok := enrollmentPrivateKey.(*ecdsa.PrivateKey)
-	if !ok {
-		return fmt.Errorf("key not EC")
-	}
-
-	u.enrollmentKeys = &Enrollment{PrivateKey: privateKey, PublicKey: publicKey, EcdsaPrivateKey: ecPrivateKey}
-	return nil
+func (u *User) SetPrivateKey(privateKey bccsp.Key) {
+	u.PrivateKey = privateKey
 }
 
 /**
  * deprecated.
  */
-func (u *User) GetEnrollment() *Enrollment {
-	return u.enrollmentKeys
+func (u *User) GetPrivateKey() bccsp.Key {
+	return u.PrivateKey
 }
 
 /**

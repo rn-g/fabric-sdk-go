@@ -3,8 +3,8 @@ package fabric_sdk_go
 import (
 	"fmt"
 
-	crypto "github.com/hyperledger/fabric-sdk-go/crypto"
 	keysstore "github.com/hyperledger/fabric-sdk-go/keysstore"
+	"github.com/hyperledger/fabric/bccsp"
 )
 
 /**
@@ -25,7 +25,7 @@ import (
  */
 type Client struct {
 	chains      map[string]*Chain
-	cryptoSuite crypto.CryptoSuite
+	cryptoSuite bccsp.BCCSP
 	stateStore  *keysstore.KeyValueStore
 	userContext *User
 }
@@ -105,14 +105,14 @@ func (c *Client) GetStateStore() *keysstore.KeyValueStore {
 /**
  * A convenience method for obtaining the state store object in use for this client.
  */
-func (c *Client) SetCryptoSuite(cryptoSuite crypto.CryptoSuite) {
+func (c *Client) SetCryptoSuite(cryptoSuite bccsp.BCCSP) {
 	c.cryptoSuite = cryptoSuite
 }
 
 /**
  * A convenience method for obtaining the CryptoSuite object in use for this client.
  */
-func (c *Client) GetCryptoSuite() crypto.CryptoSuite {
+func (c *Client) GetCryptoSuite() bccsp.BCCSP {
 	return c.cryptoSuite
 }
 
@@ -134,6 +134,6 @@ func (c *Client) SetUserContext(user *User) {
  * The loaded user object must represent an enrolled user with a valid enrollment certificate signed by a trusted CA
  * (such as the COP server).
  */
-func (c *Client) GetUserContext() *User {
+func (c *Client) GetUserContext(name string) *User {
 	return c.userContext
 }

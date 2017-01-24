@@ -23,7 +23,8 @@ import (
 	"bytes"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -59,19 +60,19 @@ func GetPayloads(txActions *peer.TransactionAction) (*peer.ChaincodeActionPayloa
 	return ccPayload, respPayload, nil
 }
 
-// GetEndorserTxFromBlock gets Transaction from Block.Data.Data
+// GetEnvelopeFromBlock gets an envelope from a block's Data field.
 func GetEnvelopeFromBlock(data []byte) (*common.Envelope, error) {
 	//Block always begins with an envelope
 	var err error
 	env := &common.Envelope{}
 	if err = proto.Unmarshal(data, env); err != nil {
-		return nil, fmt.Errorf("Error getting envelope(%s)\n", err)
+		return nil, fmt.Errorf("Error getting envelope(%s)", err)
 	}
 
 	return env, nil
 }
 
-// assemble an Envelope message from proposal, endorsements and a signer.
+// CreateSignedTx assembles an Envelope message from proposal, endorsements, and a signer.
 // This function should be called by a client when it has collected enough endorsements
 // for a proposal to create a transaction and submit it to peers for ordering
 func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps ...*peer.ProposalResponse) (*common.Envelope, error) {
@@ -181,6 +182,7 @@ func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps .
 	return &common.Envelope{Payload: paylBytes, Signature: sig}, nil
 }
 
+// CreateProposalResponse creates a proposal response.
 func CreateProposalResponse(hdr []byte, payl []byte, results []byte, events []byte, visibility []byte, signingEndorser msp.SigningIdentity) (*peer.ProposalResponse, error) {
 	// obtain the proposal hash given proposal header, payload and the requested visibility
 	pHashBytes, err := GetProposalHash1(hdr, payl, visibility)
@@ -197,7 +199,7 @@ func CreateProposalResponse(hdr []byte, payl []byte, results []byte, events []by
 	// serialize the signing identity
 	endorser, err := signingEndorser.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("Could not serialize the signing identity for %s, err %s", signingEndorser.Identifier(), err)
+		return nil, fmt.Errorf("Could not serialize the signing identity for %s, err %s", signingEndorser.GetIdentifier(), err)
 	}
 
 	// sign the concatenation of the proposal response and the serialized endorser identity with this endorser's key
@@ -255,11 +257,11 @@ func GetBytesProposalPayloadForTx(payload *peer.ChaincodeProposalPayload, visibi
 	// here, as an example, I'll code the visibility policy that allows the
 	// full header but only the hash of the payload
 
-	// TODO: use bccsp interfaces and providers as soon as they are ready!
-	hash := primitives.GetDefaultHash()()
-	hash.Write(cppBytes) // hash the serialized ChaincodeProposalPayload object (stripped of the transient bytes)
-
-	return hash.Sum(nil), nil
+	digest, err := factory.GetDefaultOrPanic().Hash(cppBytes, &bccsp.SHAOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("Failed computing digest [%s]", err)
+	}
+	return digest, nil
 }
 
 // GetProposalHash2 gets the proposal hash - this version
@@ -272,8 +274,10 @@ func GetProposalHash2(header []byte, ccPropPayl []byte) ([]byte, error) {
 		return nil, fmt.Errorf("Nil arguments")
 	}
 
-	// TODO: use bccsp interfaces and providers as soon as they are ready!
-	hash := primitives.GetDefaultHash()()
+	hash, err := factory.GetDefaultOrPanic().GetHash(&bccsp.SHAOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("Failed instantiating hash function [%s]", err)
+	}
 	hash.Write(header)     // hash the serialized Header object
 	hash.Write(ccPropPayl) // hash the bytes of the chaincode proposal payload that we are given
 
@@ -301,7 +305,10 @@ func GetProposalHash1(header []byte, ccPropPayl []byte, visibility []byte) ([]by
 	}
 
 	// TODO: use bccsp interfaces and providers as soon as they are ready!
-	hash2 := primitives.GetDefaultHash()()
+	hash2, err := factory.GetDefaultOrPanic().GetHash(&bccsp.SHAOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("Failed instantiating hash function [%s]", err)
+	}
 	hash2.Write(header)  // hash the serialized Header object
 	hash2.Write(ppBytes) // hash of the part of the chaincode proposal payload that will go to the tx
 

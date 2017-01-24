@@ -19,104 +19,146 @@ package msp
 import (
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/hex"
 	"fmt"
 
 	"encoding/pem"
 
-	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/bccsp/factory"
-	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"errors"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/signer"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 type identity struct {
-	id   *IdentityIdentifier
+	// id contains the identifier (MSPID and identity identifier) for this instance
+	id *IdentityIdentifier
+
+	// cert contains the x.509 certificate that signs the public key of this instance
 	cert *x509.Certificate
-	pk   bccsp.Key
+
+	// this is the public key of this instance
+	pk bccsp.Key
+
+	// reference to the MSP that "owns" this identity
+	msp *bccspmsp
 }
 
-func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key) Identity {
+func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) Identity {
 	mspLogger.Infof("Creating identity instance for ID %s", id)
-	return &identity{id: id, cert: cert, pk: pk}
+	return &identity{id: id, cert: cert, pk: pk, msp: msp}
 }
 
-func (id *identity) Identifier() *IdentityIdentifier {
+// SatisfiesPrincipal returns null if this instance matches the supplied principal or an error otherwise
+func (id *identity) SatisfiesPrincipal(principal *common.MSPPrincipal) error {
+	return id.msp.SatisfiesPrincipal(id, principal)
+}
+
+// GetIdentifier returns the identifier (MSPID/IDID) for this instance
+func (id *identity) GetIdentifier() *IdentityIdentifier {
 	return id.id
 }
 
+// GetMSPIdentifier returns the MSP identifier for this instance
 func (id *identity) GetMSPIdentifier() string {
-	return id.id.Mspid.Value
+	return id.id.Mspid
 }
 
-func (id *identity) Validate() (bool, error) {
-	return GetManager().IsValid(id, &id.id.Mspid)
+// IsValid returns nil if this instance is a valid identity or an error otherwise
+func (id *identity) Validate() error {
+	return id.msp.Validate(id)
 }
 
-func (id *identity) ParticipantID() string {
+// GetOrganizationUnits returns the OU for this instance
+func (id *identity) GetOrganizationUnits() string {
 	// TODO
 	return "dunno"
 }
 
-func (id *identity) Verify(msg []byte, sig []byte) (bool, error) {
+// Verify checks against a signature and a message
+// to determine whether this identity produced the
+// signature; it returns nil if so or an error otherwise
+func (id *identity) Verify(msg []byte, sig []byte) error {
 	mspLogger.Infof("Verifying signature")
-	bccsp, err := factory.GetDefault()
+
+	// Compute Hash
+	digest, err := id.msp.bccsp.Hash(msg, &bccsp.SHAOpts{})
 	if err != nil {
-		return false, fmt.Errorf("Failed getting default BCCSP [%s]", err)
-	} else if bccsp == nil {
-		return false, fmt.Errorf("Failed getting default BCCSP. Nil instance.")
+		return fmt.Errorf("Failed computing digest [%s]", err)
 	}
 
-	return bccsp.Verify(id.pk, sig, primitives.Hash(msg), nil)
+	// Verify signature
+	mspLogger.Debugf("Verify: msg = %s", hex.Dump(msg))
+	mspLogger.Debugf("Verify: digest = %s", hex.Dump(digest))
+	mspLogger.Debugf("Verify: sig = %s", hex.Dump(sig))
+
+	valid, err := id.msp.bccsp.Verify(id.pk, sig, digest, nil)
+	if err != nil {
+		return fmt.Errorf("Could not determine the validity of the signature, err %s", err)
+	} else if !valid {
+		return errors.New("The signature is invalid")
+	}
+
+	return nil
 }
 
-func (id *identity) VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) (bool, error) {
+func (id *identity) VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) error {
 	// TODO
-	return true, nil
+	return nil
 }
 
-func (id *identity) VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) (bool, error) {
+func (id *identity) VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) error {
 	// TODO
-	return true, nil
+	return nil
 }
 
+// Serialize returns a byte array representation of this identity
 func (id *identity) Serialize() ([]byte, error) {
-	/*
-		mspLogger.Infof("Serializing identity %s", id.id)
+	mspLogger.Infof("Serializing identity %s", id.id)
 
-		// We serialize identities by prepending the MSPID and appending the ASN.1 DER content of the cert
-		sId := SerializedIdentity{Mspid: id.id.Mspid, IdBytes: id.cert.Raw}
-		idBytes, err := asn1.Marshal(sId)
-		if err != nil {
-			return nil, fmt.Errorf("Could not marshal a SerializedIdentity structure for identity %s, err %s", id.id, err)
-		}
-
-		return idBytes, nil
-	*/
 	pb := &pem.Block{Bytes: id.cert.Raw}
 	pemBytes := pem.EncodeToMemory(pb)
 	if pemBytes == nil {
 		return nil, fmt.Errorf("Encoding of identitiy failed")
 	}
-	return pemBytes, nil
+
+	// We serialize identities by prepending the MSPID and appending the ASN.1 DER content of the cert
+	sId := &SerializedIdentity{Mspid: id.id.Mspid, IdBytes: pemBytes}
+	idBytes, err := proto.Marshal(sId)
+	if err != nil {
+		return nil, fmt.Errorf("Could not marshal a SerializedIdentity structure for identity %s, err %s", id.id, err)
+	}
+
+	return idBytes, nil
 }
 
 type signingidentity struct {
+	// we embed everything from a base identity
 	identity
+
+	// signer corresponds to the object that can produce signatures from this identity
 	signer *signer.CryptoSigner
 }
 
-func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, signer *signer.CryptoSigner) SigningIdentity {
+func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, signer *signer.CryptoSigner, msp *bccspmsp) SigningIdentity {
 	mspLogger.Infof("Creating signing identity instance for ID %s", id)
-	return &signingidentity{identity{id: id, cert: cert, pk: pk}, signer}
+	return &signingidentity{identity{id: id, cert: cert, pk: pk, msp: msp}, signer}
 }
 
-func (id *signingidentity) Identity() {
-	// TODO
-}
-
+// Sign produces a signature over msg, signed by this instance
 func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 	mspLogger.Infof("Signing message")
-	return id.signer.Sign(rand.Reader, primitives.Hash(msg), nil)
+
+	// Compute Hash
+	digest, err := id.msp.bccsp.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("Failed computing digest [%s]", err)
+	}
+
+	// Sign
+	return id.signer.Sign(rand.Reader, digest, nil)
 }
 
 func (id *signingidentity) SignOpts(msg []byte, opts SignatureOpts) ([]byte, error) {

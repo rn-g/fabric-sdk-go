@@ -96,7 +96,7 @@ func GetPeersConfig() []PeerConfig {
 }
 
 func IsTlsEnabled() bool {
-	return viper.GetBool("tls.enabled")
+	return viper.GetBool("client.tls.enabled")
 }
 
 func GetTlsCACertPool() *x509.CertPool {
@@ -130,6 +130,22 @@ func GetSecurityLevel() int {
 }
 func GetOrdererHost() string {
 	return viper.GetString("client.orderer.host")
+}
+
+func GetMspUrl() string {
+	return viper.GetString("client.msp.url")
+}
+
+func GetMspId() string {
+	return viper.GetString("client.msp.id")
+}
+
+func GetMspClientPath() string {
+	return viper.GetString("client.msp.clientPath")
+}
+
+func GetKeyStorePath() string {
+	return viper.GetString("client.keystore.path")
 }
 
 func GetOrdererPort() string {
