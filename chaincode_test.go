@@ -9,7 +9,7 @@ import (
 	"time"
 
 	config "github.com/hyperledger/fabric-sdk-go/config"
-	cop "github.com/hyperledger/fabric-sdk-go/cop"
+	msp "github.com/hyperledger/fabric-sdk-go/msp"
 	"github.com/hyperledger/fabric/bccsp"
 	bccspFactory "github.com/hyperledger/fabric/bccsp/factory"
 
@@ -17,10 +17,11 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-func TestChainCodeInvoke(t *testing.T) {
-	// Configuration
-	client := NewClient()
+var chainCodeId = "end2end"
+var chainId = "test_chainid"
 
+func TestChainCodeInvoke(t *testing.T) {
+	client := NewClient()
 	ks := &sw.FileBasedKeyStore{}
 	if err := ks.Init(nil, config.GetKeyStorePath(), false); err != nil {
 		t.Fatalf("Failed initializing key store [%s]", err)
@@ -34,11 +35,11 @@ func TestChainCodeInvoke(t *testing.T) {
 
 	client.SetCryptoSuite(cryptoSuite)
 	if client.GetUserContext("admin") == nil {
-		fcs, err := cop.NewFabricCOPServices(config.GetMspUrl(), config.GetMspClientPath())
+		msps, err := msp.NewMSPServices(config.GetMspUrl(), config.GetMspClientPath())
 		if err != nil {
 			t.Fatalf("NewFabricCOPServices return error: %v", err)
 		}
-		key, cert, err := fcs.Enroll("admin", "adminpw")
+		key, cert, err := msps.Enroll("admin", "adminpw")
 		block, _ := pem.Decode(key)
 		if err != nil {
 			t.Fatalf("Enroll return error: %v", err)
@@ -113,7 +114,7 @@ func getQueryValue(t *testing.T, chain *Chain) (string, error) {
 	args = append(args, "invoke")
 	args = append(args, "query")
 	args = append(args, "b")
-	signedProposal, _, err := chain.CreateTransactionProposal("mycc", "test_chainid", args, true)
+	signedProposal, _, err := chain.CreateTransactionProposal(chainCodeId, chainId, args, true)
 	if err != nil {
 		return "", fmt.Errorf("SendTransactionProposal return error: %v", err)
 	}
@@ -139,7 +140,7 @@ func invoke(t *testing.T, chain *Chain) error {
 	args = append(args, "a")
 	args = append(args, "b")
 	args = append(args, "1")
-	signedProposal, proposal, err := chain.CreateTransactionProposal("mycc", "test_chainid", args, true)
+	signedProposal, proposal, err := chain.CreateTransactionProposal(chainCodeId, chainId, args, true)
 	if err != nil {
 		return fmt.Errorf("SendTransactionProposal return error: %v", err)
 	}
