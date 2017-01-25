@@ -243,7 +243,11 @@ func (c *Chain) CreateTransactionProposal(chaincodeName string, chainId string, 
 
 	txid := util.GenerateUUID()
 
-	serializedIdentity := &msp.SerializedIdentity{Mspid: config.GetMspId(), IdBytes: c.clientContext.GetUserContext("").GetEnrollmentCertificate()}
+	user, err := c.clientContext.GetUserContext("")
+	if err != nil {
+		return nil, nil, fmt.Errorf("GetUserContext return error: %s\n", err)
+	}
+	serializedIdentity := &msp.SerializedIdentity{Mspid: config.GetMspId(), IdBytes: user.GetEnrollmentCertificate()}
 	creatorId, err := proto.Marshal(serializedIdentity)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Could not Marshal serializedIdentity, err %s\n", err)
@@ -263,7 +267,7 @@ func (c *Chain) CreateTransactionProposal(chaincodeName string, chainId string, 
 	if err != nil {
 		return nil, nil, err
 	}
-	signature, err := cryptoSuite.Sign(c.clientContext.GetUserContext("").GetPrivateKey(),
+	signature, err := cryptoSuite.Sign(user.GetPrivateKey(),
 		digest, nil)
 	if err != nil {
 		return nil, nil, err
@@ -412,8 +416,11 @@ func (c *Chain) SendTransaction(proposal *pb.Proposal, tx *pb.Transaction) (map[
 	if err != nil {
 		return nil, err
 	}
-
-	signature, err := cryptoSuite.Sign(c.clientContext.GetUserContext("").GetPrivateKey(),
+	user, err := c.clientContext.GetUserContext("")
+	if err != nil {
+		return nil, fmt.Errorf("GetUserContext return error: %s\n", err)
+	}
+	signature, err := cryptoSuite.Sign(user.GetPrivateKey(),
 		digest, nil)
 	if err != nil {
 		return nil, err
@@ -431,7 +438,7 @@ func (c *Chain) SendTransaction(proposal *pb.Proposal, tx *pb.Transaction) (map[
 			var transactionResponse *TransactionResponse
 
 			logger.Debugf("Send TransactionRequest to orderer :%s\n", orderer.Url)
-			if err = o.sendBroadcast(envelope); err != nil {
+			if err = orderer.sendBroadcast(envelope); err != nil {
 				logger.Debugf("Receive Error Response from orderer :%v\n", err)
 				transactionResponse = &TransactionResponse{orderer.Url, fmt.Errorf("Error calling endorser '%s':  %s", orderer.Url, err)}
 			} else {

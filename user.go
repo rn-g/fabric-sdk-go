@@ -28,6 +28,11 @@ type User struct {
 	enrollmentCertificate []byte
 }
 
+type UserJson struct {
+	PrivateKeySKI         []byte
+	EnrollmentCertificate []byte
+}
+
 /**
  * Constructor for a user.
  *

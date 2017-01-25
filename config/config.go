@@ -70,7 +70,7 @@ func GetPeersConfig() []PeerConfig {
 	peersConfig := []PeerConfig{}
 	peers := viper.GetStringMap("client.peers")
 	for key, value := range peers {
-		mm := value.(map[interface{}]interface{})
+		mm := value.(map[string]interface{})
 		host, _ := mm["host"].(string)
 		port, _ := mm["port"].(int)
 		eventHost, _ := mm["event_host"].(string)

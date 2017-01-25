@@ -1,9 +1,10 @@
 package fabric_sdk_go
 
 import (
+	"encoding/json"
 	"fmt"
 
-	keysstore "github.com/hyperledger/fabric-sdk-go/keysstore"
+	kvs "github.com/hyperledger/fabric-sdk-go/keyvaluestore"
 	"github.com/hyperledger/fabric/bccsp"
 )
 
@@ -26,7 +27,7 @@ import (
 type Client struct {
 	chains      map[string]*Chain
 	cryptoSuite bccsp.BCCSP
-	stateStore  *keysstore.KeyValueStore
+	stateStore  kvs.KeyValueStore
 	userContext *User
 }
 
@@ -91,14 +92,14 @@ func (c *Client) QueryChainInfo(name string, peers []*Peer) (*Chain, error) {
  * so that multiple app instances can share app state via the database (note that this doesn’t necessarily make the app stateful).
  * This API makes this pluggable so that different store implementations can be selected by the application.
  */
-func (c *Client) SetStateStore(stateStore *keysstore.KeyValueStore) {
+func (c *Client) SetStateStore(stateStore kvs.KeyValueStore) {
 	c.stateStore = stateStore
 }
 
 /**
  * A convenience method for obtaining the state store object in use for this client.
  */
-func (c *Client) GetStateStore() *keysstore.KeyValueStore {
+func (c *Client) GetStateStore() kvs.KeyValueStore {
 	return c.GetStateStore()
 }
 
@@ -123,8 +124,31 @@ func (c *Client) GetCryptoSuite() bccsp.BCCSP {
  * this cache will not be established and the application is responsible for setting the user context again when the application
  * crashed and is recovered.
  */
-func (c *Client) SetUserContext(user *User) {
+func (c *Client) SetUserContext(user *User, skipPersistence bool) error {
+	if user == nil {
+		return fmt.Errorf("user is nil")
+	}
+
+	if user.GetName() == "" {
+		return fmt.Errorf("user name is empty")
+	}
 	c.userContext = user
+	if !skipPersistence {
+		if c.stateStore == nil {
+			return fmt.Errorf("stateStore is nil")
+		}
+		userJson := &UserJson{PrivateKeySKI: user.GetPrivateKey().SKI(), EnrollmentCertificate: user.GetEnrollmentCertificate()}
+		data, err := json.Marshal(userJson)
+		if err != nil {
+			return fmt.Errorf("Marshal json return error: %v", err)
+		}
+		err = c.stateStore.SetValue(user.GetName(), data)
+		if err != nil {
+			return fmt.Errorf("stateStore SetValue return error: %v", err)
+		}
+	}
+	return nil
+
 }
 
 /**
@@ -134,6 +158,36 @@ func (c *Client) SetUserContext(user *User) {
  * The loaded user object must represent an enrolled user with a valid enrollment certificate signed by a trusted CA
  * (such as the COP server).
  */
-func (c *Client) GetUserContext(name string) *User {
-	return c.userContext
+func (c *Client) GetUserContext(name string) (*User, error) {
+	if c.userContext != nil {
+		return c.userContext, nil
+	}
+	if name == "" {
+		return nil, nil
+	}
+	if c.stateStore == nil {
+		return nil, fmt.Errorf("stateStore is nil")
+	}
+	if c.cryptoSuite == nil {
+		return nil, fmt.Errorf("cryptoSuite is nil")
+	}
+	value, err := c.stateStore.GetValue(name)
+	if err != nil {
+		return nil, nil
+	}
+	var userJson UserJson
+	err = json.Unmarshal(value, &userJson)
+	if err != nil {
+		return nil, fmt.Errorf("stateStore GetValue return error: %v", err)
+	}
+	user := NewUser(name)
+	user.SetEnrollmentCertificate(userJson.EnrollmentCertificate)
+	key, err := c.cryptoSuite.GetKey(userJson.PrivateKeySKI)
+	if err != nil {
+		return nil, fmt.Errorf("cryptoSuite GetKey return error: %v", err)
+	}
+	user.SetPrivateKey(key)
+	c.userContext = user
+	return c.userContext, nil
+
 }

@@ -9,7 +9,9 @@ import (
 	"time"
 
 	config "github.com/hyperledger/fabric-sdk-go/config"
+	kvs "github.com/hyperledger/fabric-sdk-go/keyvaluestore"
 	msp "github.com/hyperledger/fabric-sdk-go/msp"
+
 	"github.com/hyperledger/fabric/bccsp"
 	bccspFactory "github.com/hyperledger/fabric/bccsp/factory"
 
@@ -32,26 +34,37 @@ func TestChainCodeInvoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed getting ephemeral software-based BCCSP [%s]", err)
 	}
-
 	client.SetCryptoSuite(cryptoSuite)
-	if client.GetUserContext("admin") == nil {
+	stateStore, err := kvs.CreateNewFileKeyValueStore("C:/enroll_user")
+	if err != nil {
+		t.Fatalf("CreateNewFileKeyValueStore return error[%s]", err)
+	}
+	client.SetStateStore(stateStore)
+	user, err := client.GetUserContext("testUser")
+	if err != nil {
+		t.Fatalf("client.GetUserContext return error: %v", err)
+	}
+	if user == nil {
 		msps, err := msp.NewMSPServices(config.GetMspUrl(), config.GetMspClientPath())
 		if err != nil {
 			t.Fatalf("NewFabricCOPServices return error: %v", err)
 		}
-		key, cert, err := msps.Enroll("admin", "adminpw")
+		key, cert, err := msps.Enroll("testUser", "user1")
 		block, _ := pem.Decode(key)
 		if err != nil {
 			t.Fatalf("Enroll return error: %v", err)
 		}
-		user := NewUser("admin")
+		user := NewUser("testUser")
 		k, err := client.GetCryptoSuite().KeyImport(block.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: false})
 		if err != nil {
 			t.Fatalf("KeyImport return error: %v", err)
 		}
 		user.SetPrivateKey(k)
 		user.SetEnrollmentCertificate(cert)
-		client.SetUserContext(user)
+		err = client.SetUserContext(user, false)
+		if err != nil {
+			t.Fatalf("client.SetUserContext return error: %v", err)
+		}
 	}
 
 	querychain, err := client.NewChain("querychain")
