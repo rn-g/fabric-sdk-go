@@ -1,4 +1,4 @@
-package fabric_sdk_go
+package integration_test
 
 import (
 	"encoding/pem"
@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	fabric_sdk "github.com/hyperledger/fabric-sdk-go"
 	config "github.com/hyperledger/fabric-sdk-go/config"
 	kvs "github.com/hyperledger/fabric-sdk-go/keyvaluestore"
 	msp "github.com/hyperledger/fabric-sdk-go/msp"
-
 	"github.com/hyperledger/fabric/bccsp"
 	bccspFactory "github.com/hyperledger/fabric/bccsp/factory"
 
@@ -23,7 +23,7 @@ var chainCodeId = "end2end"
 var chainId = "test_chainid"
 
 func TestChainCodeInvoke(t *testing.T) {
-	client := NewClient()
+	client := fabric_sdk.NewClient()
 	ks := &sw.FileBasedKeyStore{}
 	if err := ks.Init(nil, config.GetKeyStorePath(), false); err != nil {
 		t.Fatalf("Failed initializing key store [%s]", err)
@@ -54,7 +54,7 @@ func TestChainCodeInvoke(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Enroll return error: %v", err)
 		}
-		user := NewUser("testUser")
+		user := fabric_sdk.NewUser("testUser")
 		k, err := client.GetCryptoSuite().KeyImport(block.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: false})
 		if err != nil {
 			t.Fatalf("KeyImport return error: %v", err)
@@ -73,7 +73,7 @@ func TestChainCodeInvoke(t *testing.T) {
 	}
 
 	for _, p := range config.GetPeersConfig() {
-		endorser := CreateNewPeer(fmt.Sprintf("%s:%s", p.Host, p.Port))
+		endorser := fabric_sdk.CreateNewPeer(fmt.Sprintf("%s:%s", p.Host, p.Port))
 		querychain.AddPeer(endorser)
 		break
 	}
@@ -82,11 +82,11 @@ func TestChainCodeInvoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewChain return error: %v", err)
 	}
-	orderer := CreateNewOrderer(fmt.Sprintf("%s:%s", config.GetOrdererHost(), config.GetOrdererPort()))
+	orderer := fabric_sdk.CreateNewOrderer(fmt.Sprintf("%s:%s", config.GetOrdererHost(), config.GetOrdererPort()))
 	invokechain.AddOrderer(orderer)
 
 	for _, p := range config.GetPeersConfig() {
-		endorser := CreateNewPeer(fmt.Sprintf("%s:%s", p.Host, p.Port))
+		endorser := fabric_sdk.CreateNewPeer(fmt.Sprintf("%s:%s", p.Host, p.Port))
 		invokechain.AddPeer(endorser)
 	}
 
@@ -121,7 +121,7 @@ func TestChainCodeInvoke(t *testing.T) {
 
 }
 
-func getQueryValue(t *testing.T, chain *Chain) (string, error) {
+func getQueryValue(t *testing.T, chain *fabric_sdk.Chain) (string, error) {
 
 	var args []string
 	args = append(args, "invoke")
@@ -145,7 +145,7 @@ func getQueryValue(t *testing.T, chain *Chain) (string, error) {
 	return "", nil
 }
 
-func invoke(t *testing.T, chain *Chain) error {
+func invoke(t *testing.T, chain *fabric_sdk.Chain) error {
 
 	var args []string
 	args = append(args, "invoke")

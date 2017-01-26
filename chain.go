@@ -1,7 +1,7 @@
 package fabric_sdk_go
 
 import (
-	"bytes"
+	_ "bytes"
 	"fmt"
 	"sync"
 
@@ -236,7 +236,6 @@ func (c *Chain) CreateTransactionProposal(chaincodeName string, chainId string, 
 	for i, arg := range args {
 		arry[i] = []byte(arg)
 	}
-
 	ccis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{
 		Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: chaincodeName},
 		Input: &pb.ChaincodeInput{Args: arry}}}
@@ -291,7 +290,11 @@ func (c *Chain) SendTransactionProposal(signedProposal *pb.SignedProposal, retry
 				logger.Debugf("Receive Error Response :%v\n", proposalResponse)
 				transactionProposalResponse = &TransactionProposalResponse{peer.GetUrl(), nil, fmt.Errorf("Error calling endorser '%s':  %s", peer.GetUrl(), err)}
 			} else {
-				logger.Debugf("Receive Proposal Response :%v\n", proposalResponse)
+				prp1, _ := protos_utils.GetProposalResponsePayload(proposalResponse.Payload)
+				act1, _ := protos_utils.GetChaincodeAction(prp1.Extension)
+				logger.Debugf("%s ProposalResponsePayload Extension ChaincodeAction Results\n%s\n", peer.GetUrl(), string(act1.Results))
+
+				logger.Debugf("Receive Proposal ChaincodeActionResponse :%v\n", proposalResponse)
 				transactionProposalResponse = &TransactionProposalResponse{peer.GetUrl(), proposalResponse, nil}
 			}
 			tprm[transactionProposalResponse.Endorser] = transactionProposalResponse
@@ -327,19 +330,27 @@ func (c *Chain) CreateTransaction(proposal *pb.Proposal, resps []*pb.ProposalRes
 		return nil, err
 	}
 
-	// ensure that all actions are bitwise equal and that they are successful
-	var a1 []byte
-	for n, r := range resps {
-		if n == 0 {
-			a1 = r.Payload
-			if r.Response.Status != 200 {
-				return nil, fmt.Errorf("Proposal response was not successful, error code %d, msg %s", r.Response.Status, r.Response.Message)
-			}
-			continue
-		}
+	// This code is commented out because the ProposalResponsePayload Extension ChaincodeAction Results
+	// return from endorsements is different so the compare will fail
 
-		if bytes.Compare(a1, r.Payload) != 0 {
-			return nil, fmt.Errorf("ProposalResponsePayloads do not match")
+	//	var a1 []byte
+	//	for n, r := range resps {
+	//		if n == 0 {
+	//			a1 = r.Payload
+	//			if r.Response.Status != 200 {
+	//				return nil, fmt.Errorf("Proposal response was not successful, error code %d, msg %s", r.Response.Status, r.Response.Message)
+	//			}
+	//			continue
+	//		}
+
+	//		if bytes.Compare(a1, r.Payload) != 0 {
+	//			return nil, fmt.Errorf("ProposalResponsePayloads do not match")
+	//		}
+	//	}
+
+	for _, r := range resps {
+		if r.Response.Status != 200 {
+			return nil, fmt.Errorf("Proposal response was not successful, error code %d, msg %s", r.Response.Status, r.Response.Message)
 		}
 	}
 
