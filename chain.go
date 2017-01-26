@@ -150,7 +150,7 @@ func (c *Chain) AddOrderer(orderer *Orderer) {
  * Remove orderer endpoint from a chain object, this is a local-only operation.
  * @param {Orderer} orderer An instance of the Orderer class.
  */
-func (c *Chain) RemoveOrderer(orderer Orderer) {
+func (c *Chain) RemoveOrderer(orderer *Orderer) {
 	delete(c.orderers, orderer.Url)
 
 }
@@ -404,6 +404,15 @@ func (c *Chain) CreateTransaction(proposal *pb.Proposal, resps []*pb.ProposalRes
  * These events should cause the method to emit “complete” or “error” events to the application.
  */
 func (c *Chain) SendTransaction(proposal *pb.Proposal, tx *pb.Transaction) (map[string]*TransactionResponse, error) {
+	if c.orderers == nil || len(c.orderers) == 0 {
+		return nil, fmt.Errorf("orderers is nil")
+	}
+	if proposal == nil {
+		return nil, fmt.Errorf("proposal is nil")
+	}
+	if tx == nil {
+		return nil, fmt.Errorf("Transaction is nil")
+	}
 	// the original header
 	hdr, err := protos_utils.GetHeader(proposal.Header)
 	if err != nil {

@@ -1,5 +1,0 @@
-{
-"ca_certfiles":["./integration_test/test_resources/root.pem"],
-"client":{"keyfile":"./integration_test/test_resources/tls_client-key.pem",
-    "certfile":"./integration_test/test_resources/tls_client-cert.pem"}
-}

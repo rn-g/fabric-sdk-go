@@ -3,7 +3,6 @@ package integration_test
 import (
 	"encoding/pem"
 	"fmt"
-	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -23,6 +22,7 @@ var chainCodeId = "end2end"
 var chainId = "test_chainid"
 
 func TestChainCodeInvoke(t *testing.T) {
+	InitConfigForEndToEnd()
 	client := fabric_sdk.NewClient()
 	ks := &sw.FileBasedKeyStore{}
 	if err := ks.Init(nil, config.GetKeyStorePath(), false); err != nil {
@@ -35,7 +35,7 @@ func TestChainCodeInvoke(t *testing.T) {
 		t.Fatalf("Failed getting ephemeral software-based BCCSP [%s]", err)
 	}
 	client.SetCryptoSuite(cryptoSuite)
-	stateStore, err := kvs.CreateNewFileKeyValueStore("C:/enroll_user")
+	stateStore, err := kvs.CreateNewFileKeyValueStore("/enroll_user")
 	if err != nil {
 		t.Fatalf("CreateNewFileKeyValueStore return error[%s]", err)
 	}
@@ -50,12 +50,12 @@ func TestChainCodeInvoke(t *testing.T) {
 			t.Fatalf("NewFabricCOPServices return error: %v", err)
 		}
 		key, cert, err := msps.Enroll("testUser", "user1")
-		block, _ := pem.Decode(key)
+		keyPem, _ := pem.Decode(key)
 		if err != nil {
 			t.Fatalf("Enroll return error: %v", err)
 		}
 		user := fabric_sdk.NewUser("testUser")
-		k, err := client.GetCryptoSuite().KeyImport(block.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: false})
+		k, err := client.GetCryptoSuite().KeyImport(keyPem.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: false})
 		if err != nil {
 			t.Fatalf("KeyImport return error: %v", err)
 		}
@@ -190,10 +190,9 @@ func invoke(t *testing.T, chain *fabric_sdk.Chain) error {
 
 }
 
-func TestMain(m *testing.M) {
-	err := config.InitConfig("./test_resources/config_test.yaml")
+func InitConfigForEndToEnd() {
+	err := config.InitConfig("./test_resources/config/config_test.yaml")
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	os.Exit(m.Run())
 }

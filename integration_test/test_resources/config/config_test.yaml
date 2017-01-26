@@ -36,7 +36,7 @@ client:
  msp:
   id: "DEFAULT"
   url: "http://localhost:8888"
-  clientPath: "./integration_test/test_resources/"
+  clientPath: "../integration_test/test_resources/config"
 
  keystore:
-  path: "C:/keystore"
+  path: "/keystore"
