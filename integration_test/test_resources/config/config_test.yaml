@@ -39,4 +39,4 @@ client:
   clientPath: "../integration_test/test_resources/config"
 
  keystore:
-  path: "/keystore"
+  path: "/tmp/keystore"

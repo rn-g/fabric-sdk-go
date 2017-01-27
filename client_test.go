@@ -15,7 +15,7 @@ func TestClientMethods(t *testing.T) {
 		t.Fatalf("Client getCryptoSuite should initially be nil")
 	}
 	ks := &sw.FileBasedKeyStore{}
-	if err := ks.Init(nil, "/keystoretest", false); err != nil {
+	if err := ks.Init(nil, "/tmp/keystoretest", false); err != nil {
 		t.Fatalf("Failed initializing key store [%s]", err)
 	}
 
@@ -95,7 +95,7 @@ func TestClientMethods(t *testing.T) {
 		t.Fatalf("client.NewChain create wrong chain")
 	}
 
-	stateStore, err := kvs.CreateNewFileKeyValueStore("/keyvaluestore")
+	stateStore, err := kvs.CreateNewFileKeyValueStore("/tmp/keyvaluestore")
 	if err != nil {
 		t.Fatalf("CreateNewFileKeyValueStore return error[%s]", err)
 	}

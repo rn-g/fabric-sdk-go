@@ -33,7 +33,7 @@ func TestEnroll(t *testing.T) {
 		t.Fatalf("Failed getting ephemeral software-based BCCSP [%s]", err)
 	}
 	client.SetCryptoSuite(cryptoSuite)
-	stateStore, err := kvs.CreateNewFileKeyValueStore("C:/enroll_user")
+	stateStore, err := kvs.CreateNewFileKeyValueStore("/tmp/enroll_user")
 	if err != nil {
 		t.Fatalf("CreateNewFileKeyValueStore return error[%s]", err)
 	}

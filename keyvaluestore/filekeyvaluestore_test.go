@@ -5,7 +5,7 @@ import (
 )
 
 func TestFKVSMethods(t *testing.T) {
-	stateStore, err := CreateNewFileKeyValueStore("/keyvaluestore")
+	stateStore, err := CreateNewFileKeyValueStore("/tmp/keyvaluestore")
 	if err != nil {
 		t.Fatalf("CreateNewFileKeyValueStore return error[%s]", err)
 	}
