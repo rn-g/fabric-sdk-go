@@ -36,13 +36,13 @@ func TestOrdererViaChain(t *testing.T) {
 }
 
 //
-// Orderer via member missing orderer
+// Orderer via chain missing orderer
 //
 // Attempt to send a request to the orderer with the sendTransaction method
 // before the orderer URL was set. Verify that an error is reported when tying
 // to send the request.
 //
-func TestOrdererViaMemberMissingOrderer(t *testing.T) {
+func TestPeerViaChainMissingOrderer(t *testing.T) {
 	client := NewClient()
 	chain, err := client.NewChain("testChain-orderer-member2")
 	if err != nil {
@@ -59,13 +59,13 @@ func TestOrdererViaMemberMissingOrderer(t *testing.T) {
 }
 
 //
-// Orderer via member null data
+// Orderer via chain nil data
 //
 // Attempt to send a request to the orderer with the sendTransaction method
 // with the data set to null. Verify that an error is reported when tying
 // to send null data.
 //
-func TestOrdererViaMemberNilData(t *testing.T) {
+func TestOrdererViaChainNilData(t *testing.T) {
 	client := NewClient()
 	chain, err := client.NewChain("testChain-orderer-member2")
 	if err != nil {
@@ -80,5 +80,4 @@ func TestOrdererViaMemberNilData(t *testing.T) {
 	if err.Error() != "proposal is nil" {
 		t.Fatalf("SendTransaction didn't return right error")
 	}
-
 }

@@ -100,7 +100,7 @@ func (c *Client) SetStateStore(stateStore kvs.KeyValueStore) {
  * A convenience method for obtaining the state store object in use for this client.
  */
 func (c *Client) GetStateStore() kvs.KeyValueStore {
-	return c.GetStateStore()
+	return c.stateStore
 }
 
 /**
@@ -166,7 +166,7 @@ func (c *Client) GetUserContext(name string) (*User, error) {
 		return nil, nil
 	}
 	if c.stateStore == nil {
-		return nil, fmt.Errorf("stateStore is nil")
+		return nil, nil
 	}
 	if c.cryptoSuite == nil {
 		return nil, fmt.Errorf("cryptoSuite is nil")

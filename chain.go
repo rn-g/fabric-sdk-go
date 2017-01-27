@@ -118,7 +118,7 @@ func (c *Chain) AddPeer(peer *Peer) {
  * Remove peer endpoint from chain.
  * @param {Peer} peer An instance of the Peer.
  */
-func (c *Chain) RemovePeer(peer Peer) {
+func (c *Chain) RemovePeer(peer *Peer) {
 	delete(c.peers, peer.GetUrl())
 }
 
@@ -276,6 +276,12 @@ func (c *Chain) CreateTransactionProposal(chaincodeName string, chainId string, 
 }
 
 func (c *Chain) SendTransactionProposal(signedProposal *pb.SignedProposal, retry int) (map[string]*TransactionProposalResponse, error) {
+	if c.peers == nil || len(c.peers) == 0 {
+		return nil, fmt.Errorf("peers is nil")
+	}
+	if signedProposal == nil {
+		return nil, fmt.Errorf("signedProposal is nil")
+	}
 	transactionProposalResponseMap := make(map[string]*TransactionProposalResponse)
 	var wg sync.WaitGroup
 	for _, p := range c.peers {
