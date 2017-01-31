@@ -19,7 +19,7 @@ import (
 )
 
 var chainCodeId = "end2end"
-var chainId = "test_chainid"
+var chainId = "testchainid"
 
 func TestChainCodeInvoke(t *testing.T) {
 	InitConfigForEndToEnd()
