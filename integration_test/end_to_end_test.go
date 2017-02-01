@@ -1,3 +1,22 @@
+/*
+Copyright SecureKey Technologies Inc. All Rights Reserved.
+
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package integration_test
 
 import (
@@ -45,18 +64,18 @@ func TestChainCodeInvoke(t *testing.T) {
 		t.Fatalf("client.GetUserContext return error: %v", err)
 	}
 	if user == nil {
-		msps, err := msp.NewMSPServices(config.GetMspUrl(), config.GetMspClientPath())
-		if err != nil {
+		msps, err1 := msp.NewMSPServices(config.GetMspURL(), config.GetMspClientPath())
+		if err1 != nil {
 			t.Fatalf("NewFabricCOPServices return error: %v", err)
 		}
-		key, cert, err := msps.Enroll("testUser", "user1")
+		key, cert, err1 := msps.Enroll("testUser", "user1")
 		keyPem, _ := pem.Decode(key)
-		if err != nil {
+		if err1 != nil {
 			t.Fatalf("Enroll return error: %v", err)
 		}
 		user := fabric_sdk.NewUser("testUser")
-		k, err := client.GetCryptoSuite().KeyImport(keyPem.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: false})
-		if err != nil {
+		k, err1 := client.GetCryptoSuite().KeyImport(keyPem.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: false})
+		if err1 != nil {
 			t.Fatalf("KeyImport return error: %v", err)
 		}
 		user.SetPrivateKey(k)

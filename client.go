@@ -1,4 +1,23 @@
-package fabric_sdk_go
+/*
+Copyright SecureKey Technologies Inc. All Rights Reserved.
+
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package fabricsdk
 
 import (
 	"encoding/json"
@@ -8,7 +27,8 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 )
 
-/**
+// Client ...
+/*
  * Main interaction handler with end user. A client instance provides a handler to interact
  * with a network of peers, orderers and optionally member services. An application using the
  * SDK may need to interact with multiple networks, each through a separate instance of the Client.
@@ -31,7 +51,8 @@ type Client struct {
 	userContext *User
 }
 
-/**
+// NewClient ...
+/*
  * Returns a Client instance
  */
 func NewClient() *Client {
@@ -40,7 +61,8 @@ func NewClient() *Client {
 	return c
 }
 
-/**
+// NewChain ...
+/*
  * Returns a chain instance with the given name. This represents a channel and its associated ledger
  * (as explained above), and this call returns an empty object. To initialize the chain in the blockchain network,
  * a list of participating endorsers and orderer peers must be configured first on the returned object.
@@ -61,7 +83,8 @@ func (c *Client) NewChain(name string) (*Chain, error) {
 
 }
 
-/**
+// GetChain ...
+/*
  * Get a {@link Chain} instance from the state storage. This allows existing chain instances to be saved
  * for retrieval later and to be shared among instances of the application. Note that it’s the
  * application/SDK’s responsibility to record the chain information. If an application is not able
@@ -74,7 +97,8 @@ func (c *Client) GetChain(name string) *Chain {
 	return c.chains[name]
 }
 
-/**
+// QueryChainInfo ...
+/*
  * This is a network call to the designated Peer(s) to discover the chain information.
  * The target Peer(s) must be part of the chain to be able to return the requested information.
  * @param {string} name The name of the chain.
@@ -86,7 +110,8 @@ func (c *Client) QueryChainInfo(name string, peers []*Peer) (*Chain, error) {
 	return nil, fmt.Errorf("Not implemented yet")
 }
 
-/**
+// SetStateStore ...
+/*
  * The SDK should have a built-in key value store implementation (suggest a file-based implementation to allow easy setup during
  * development). But production systems would want a store backed by database for more robust storage and clustering,
  * so that multiple app instances can share app state via the database (note that this doesn’t necessarily make the app stateful).
@@ -96,28 +121,32 @@ func (c *Client) SetStateStore(stateStore kvs.KeyValueStore) {
 	c.stateStore = stateStore
 }
 
-/**
+// GetStateStore ...
+/*
  * A convenience method for obtaining the state store object in use for this client.
  */
 func (c *Client) GetStateStore() kvs.KeyValueStore {
 	return c.stateStore
 }
 
-/**
+// SetCryptoSuite ...
+/*
  * A convenience method for obtaining the state store object in use for this client.
  */
 func (c *Client) SetCryptoSuite(cryptoSuite bccsp.BCCSP) {
 	c.cryptoSuite = cryptoSuite
 }
 
-/**
+// GetCryptoSuite ...
+/*
  * A convenience method for obtaining the CryptoSuite object in use for this client.
  */
 func (c *Client) GetCryptoSuite() bccsp.BCCSP {
 	return c.cryptoSuite
 }
 
-/**
+// SetUserContext ...
+/*
  * Sets an instance of the User class as the security context of this client instance. This user’s credentials (ECert) will be
  * used to conduct transactions and queries with the blockchain network. Upon setting the user context, the SDK saves the object
  * in a persistence cache if the “state store” has been set on the Client instance. If no state store has been set,
@@ -137,8 +166,8 @@ func (c *Client) SetUserContext(user *User, skipPersistence bool) error {
 		if c.stateStore == nil {
 			return fmt.Errorf("stateStore is nil")
 		}
-		userJson := &UserJson{PrivateKeySKI: user.GetPrivateKey().SKI(), EnrollmentCertificate: user.GetEnrollmentCertificate()}
-		data, err := json.Marshal(userJson)
+		userJSON := &UserJSON{PrivateKeySKI: user.GetPrivateKey().SKI(), EnrollmentCertificate: user.GetEnrollmentCertificate()}
+		data, err := json.Marshal(userJSON)
 		if err != nil {
 			return fmt.Errorf("Marshal json return error: %v", err)
 		}
@@ -151,7 +180,8 @@ func (c *Client) SetUserContext(user *User, skipPersistence bool) error {
 
 }
 
-/**
+// GetUserContext ...
+/*
  * The client instance can have an optional state store. The SDK saves enrolled users in the storage which can be accessed by
  * authorized users of the application (authentication is done by the application outside of the SDK).
  * This function attempts to load the user by name from the local storage (via the KeyValueStore interface).
@@ -175,14 +205,14 @@ func (c *Client) GetUserContext(name string) (*User, error) {
 	if err != nil {
 		return nil, nil
 	}
-	var userJson UserJson
-	err = json.Unmarshal(value, &userJson)
+	var userJSON UserJSON
+	err = json.Unmarshal(value, &userJSON)
 	if err != nil {
 		return nil, fmt.Errorf("stateStore GetValue return error: %v", err)
 	}
 	user := NewUser(name)
-	user.SetEnrollmentCertificate(userJson.EnrollmentCertificate)
-	key, err := c.cryptoSuite.GetKey(userJson.PrivateKeySKI)
+	user.SetEnrollmentCertificate(userJSON.EnrollmentCertificate)
+	key, err := c.cryptoSuite.GetKey(userJSON.PrivateKeySKI)
 	if err != nil {
 		return nil, fmt.Errorf("cryptoSuite GetKey return error: %v", err)
 	}

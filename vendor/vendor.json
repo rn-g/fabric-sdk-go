@@ -3,6 +3,13 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "cBzdjav+L5jW2LNfmBp3PCJvdFs=",
+			"origin": "github.com/hyperledger/fabric/vendor/github.com/BurntSushi/toml",
+			"path": "github.com/BurntSushi/toml",
+			"revision": "945c4f7abe455826c5e1b6de1f7ebdaa84346ef2",
+			"revisionTime": "2017-01-27T01:15:16Z"
+		},
+		{
 			"checksumSHA1": "B/JDcFjF5k7W81mKwjGpTcyd58o=",
 			"origin": "github.com/hyperledger/fabric-ca/vendor/github.com/cloudflare/cfssl/api",
 			"path": "github.com/cloudflare/cfssl/api",
@@ -257,10 +264,22 @@
 			"revisionTime": "2017-01-23T17:56:11Z"
 		},
 		{
+			"checksumSHA1": "78dazDgOjdCAu7A/SpJfisZJpF4=",
+			"path": "github.com/hyperledger/fabric/core/comm",
+			"revision": "945c4f7abe455826c5e1b6de1f7ebdaa84346ef2",
+			"revisionTime": "2017-01-27T01:15:16Z"
+		},
+		{
 			"checksumSHA1": "RWKw2CdWxltkhQi3xulh++jklgo=",
 			"path": "github.com/hyperledger/fabric/core/crypto/primitives",
 			"revision": "6b4380af25f630520aceb1aa8cd659728eb50f34",
 			"revisionTime": "2017-01-23T17:56:11Z"
+		},
+		{
+			"checksumSHA1": "7IuTeh3NVnUClBcbEPenGTdWPRQ=",
+			"path": "github.com/hyperledger/fabric/events/consumer",
+			"revision": "945c4f7abe455826c5e1b6de1f7ebdaa84346ef2",
+			"revisionTime": "2017-01-27T01:15:16Z"
 		},
 		{
 			"checksumSHA1": "hjvo0N1o7gMYS3c6J2HATy+Pn1s=",
@@ -317,6 +336,20 @@
 			"path": "github.com/kr/fs",
 			"revision": "2788f0dbd16903de03cb8186e5c7d97b69ad387b",
 			"revisionTime": "2013-11-06T22:25:44Z"
+		},
+		{
+			"checksumSHA1": "tARmrSckSFIef2ZYUf8LTFN1bVA=",
+			"origin": "github.com/hyperledger/fabric/vendor/github.com/kr/pretty",
+			"path": "github.com/kr/pretty",
+			"revision": "945c4f7abe455826c5e1b6de1f7ebdaa84346ef2",
+			"revisionTime": "2017-01-27T01:15:16Z"
+		},
+		{
+			"checksumSHA1": "68l5G/yGEdKD1EUvrr174RKFCMY=",
+			"origin": "github.com/hyperledger/fabric/vendor/github.com/kr/text",
+			"path": "github.com/kr/text",
+			"revision": "945c4f7abe455826c5e1b6de1f7ebdaa84346ef2",
+			"revisionTime": "2017-01-27T01:15:16Z"
 		},
 		{
 			"checksumSHA1": "MQyiMSVz+Fsca5FMYRD3w584TUs=",

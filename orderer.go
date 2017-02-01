@@ -1,4 +1,23 @@
-package fabric_sdk_go
+/*
+Copyright SecureKey Technologies Inc. All Rights Reserved.
+
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package fabricsdk
 
 import (
 	"fmt"
@@ -6,44 +25,56 @@ import (
 	"strings"
 	"time"
 
+	config "github.com/hyperledger/fabric-sdk-go/config"
 	"github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	config "github.com/hyperledger/fabric-sdk-go/config"
 )
 
+// Orderer ...
 /**
  * The Orderer class represents a peer in the target blockchain network to which
  * HFC sends a block of transactions of endorsed proposals requiring ordering.
  *
  */
 type Orderer struct {
-	Url            string
-	GrpcDialOption []grpc.DialOption
+	url            string
+	grpcDialOption []grpc.DialOption
 }
 
+// CreateNewOrderer ...
 /**
  * Returns a Orderer instance
  */
 func CreateNewOrderer(url string) *Orderer {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTimeout(time.Second*3))
-	if config.IsTlsEnabled() {
-		creds := credentials.NewClientTLSFromCert(config.GetTlsCACertPool(), config.GetTlsServerHostOverride())
+	if config.IsTLSEnabled() {
+		creds := credentials.NewClientTLSFromCert(config.GetTLSCACertPool(), config.GetTLSServerHostOverride())
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
-	return &Orderer{Url: url, GrpcDialOption: opts}
+	return &Orderer{url: url, grpcDialOption: opts}
 }
 
+// GetURL ...
+/**
+ * Get the Orderer url. Required property for the instance objects.
+ * @returns {string} The address of the Orderer
+ */
+func (o *Orderer) GetURL() string {
+	return o.url
+}
+
+// SendBroadcast ...
 /**
  * Send the created transaction to Orderer.
  */
-func (o *Orderer) sendBroadcast(envelope *common.Envelope) error {
-	conn, err := grpc.Dial(o.Url, o.GrpcDialOption...)
+func (o *Orderer) SendBroadcast(envelope *common.Envelope) error {
+	conn, err := grpc.Dial(o.url, o.grpcDialOption...)
 	if err != nil {
 		return err
 	}

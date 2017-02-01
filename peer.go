@@ -1,4 +1,23 @@
-package fabric_sdk_go
+/*
+Copyright SecureKey Technologies Inc. All Rights Reserved.
+
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package fabricsdk
 
 import (
 	"encoding/pem"
@@ -12,6 +31,7 @@ import (
 	config "github.com/hyperledger/fabric-sdk-go/config"
 )
 
+// Peer ...
 /**
  * The Peer class represents a peer in the target blockchain network to which
  * HFC sends endorsement proposals, transaction ordering or query requests.
@@ -35,6 +55,7 @@ type Peer struct {
 	enrollmentCertificate *pem.Block
 }
 
+// CreateNewPeer ...
 /**
  * Constructs a Peer given its endpoint configuration settings.
  *
@@ -43,8 +64,8 @@ type Peer struct {
 func CreateNewPeer(url string) *Peer {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTimeout(time.Second*3))
-	if config.IsTlsEnabled() {
-		creds := credentials.NewClientTLSFromCert(config.GetTlsCACertPool(), config.GetTlsServerHostOverride())
+	if config.IsTLSEnabled() {
+		creds := credentials.NewClientTLSFromCert(config.GetTLSCACertPool(), config.GetTLSServerHostOverride())
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	} else {
 		opts = append(opts, grpc.WithInsecure())
@@ -52,6 +73,7 @@ func CreateNewPeer(url string) *Peer {
 	return &Peer{url: url, grpcDialOption: opts, name: "", roles: nil}
 }
 
+// ConnectEventSource ...
 /**
  * Since practically all Peers are event producers, when constructing a Peer instance,
  * an application can designate it as the event source for the application. Typically
@@ -67,6 +89,7 @@ func (p *Peer) ConnectEventSource() {
 	//to do
 }
 
+// IsEventListened ...
 /**
  * A network call that discovers if at least one listener has been connected to the target
  * Peer for a given event. This helps application instance to decide whether it needs to
@@ -80,6 +103,7 @@ func (p *Peer) IsEventListened(event string, chain *Chain) (bool, error) {
 	return false, nil
 }
 
+// AddListener ...
 /**
  * For a Peer that is connected to eventSource, the addListener registers an EventCallBack for a
  * set of event types. addListener can be invoked multiple times to support differing EventCallBack
@@ -99,6 +123,7 @@ func (p *Peer) AddListener(eventType string, eventTypeData interface{}, eventCal
 	return "", nil
 }
 
+// RemoveListener ...
 /**
  * Unregisters a listener.
  * @param {string} eventListenerRef Reference returned by SDK for event listener.
@@ -109,6 +134,7 @@ func (p *Peer) RemoveListener(eventListenerRef string) (bool, error) {
 	//to do
 }
 
+// GetName ...
 /**
  * Get the Peer name. Required property for the instance objects.
  * @returns {string} The name of the Peer
@@ -117,6 +143,7 @@ func (p *Peer) GetName() string {
 	return p.name
 }
 
+// SetName ...
 /**
  * Set the Peer name / id.
  * @param {string} name
@@ -125,6 +152,7 @@ func (p *Peer) SetName(name string) {
 	p.name = name
 }
 
+// GetRoles ...
 /**
  * Get the user’s roles the Peer participates in. It’s an array of possible values
  * in “client”, and “auditor”. The member service defines two more roles reserved
@@ -135,6 +163,7 @@ func (p *Peer) GetRoles() []string {
 	return p.roles
 }
 
+// SetRoles ...
 /**
  * Set the user’s roles the Peer participates in. See getRoles() for legitimate values.
  * @param {[]string} roles The list of roles for the user.
@@ -143,6 +172,7 @@ func (p *Peer) SetRoles(roles []string) {
 	p.roles = roles
 }
 
+// GetEnrollmentCertificate ...
 /**
  * Returns the Peer's enrollment certificate.
  * @returns {pem.Block} Certificate in PEM format signed by the trusted CA
@@ -151,6 +181,7 @@ func (p *Peer) GetEnrollmentCertificate() *pem.Block {
 	return p.enrollmentCertificate
 }
 
+// SetEnrollmentCertificate ...
 /**
  * Set the Peer’s enrollment certificate.
  * @param {pem.Block} enrollment Certificate in PEM format signed by the trusted CA
@@ -159,14 +190,16 @@ func (p *Peer) SetEnrollmentCertificate(pem *pem.Block) {
 	p.enrollmentCertificate = pem
 }
 
+// GetURL ...
 /**
  * Get the Peer url. Required property for the instance objects.
- * @returns {string} The name of the Peer
+ * @returns {string} The address of the Peer
  */
-func (p *Peer) GetUrl() string {
+func (p *Peer) GetURL() string {
 	return p.url
 }
 
+// SendProposal ...
 /**
  * Send  the created proposal to peer for endorsement.
  */
