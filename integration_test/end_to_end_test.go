@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	fabric_sdk "github.com/hyperledger/fabric-sdk-go"
 	events "github.com/hyperledger/fabric-sdk-go/events"
@@ -216,7 +217,12 @@ func invoke(t *testing.T, chain *fabric_sdk.Chain, eventHub *events.EventHub) er
 		fmt.Printf("receive success event for txid(%s)\n", txId)
 		done <- true
 	})
-	<-done
+
+	select {
+	case <-done:
+	case <-time.After(time.Second * 20):
+		return fmt.Errorf("Didn't receive block event for txid(%s)\n", txId)
+	}
 	return nil
 
 }
