@@ -17,6 +17,7 @@ limitations under the License.
 syntax = "proto3";
 
 import "common/common.proto";
+import "common/msp_principal.proto";
 
 option go_package = "github.com/hyperledger/fabric/protos/common";
 
@@ -47,10 +48,17 @@ message ConfigurationEnvelope {
     repeated SignedConfigurationItem Items = 1;
 }
 
+// ConfigurationTemplate is used as a serialization format to share configuration templates
+// The orderer supplies a configuration template to the user to use when constructing a new
+// chain creation transaction, so this is used to facilitate that.
+message ConfigurationTemplate {
+    repeated ConfigurationItem Items = 1;
+}
+
 // This message may change slightly depending on the finalization of signature schemes for transactions
 message SignedConfigurationItem {
     bytes ConfigurationItem = 1;
-    repeated ConfigurationSignature Signatures = 2; // Signatures over the hash of ConfigurationItem
+    repeated ConfigurationSignature Signatures = 2;
 }
 
 message ConfigurationItem {
@@ -58,7 +66,8 @@ message ConfigurationItem {
         Policy = 0;   // Implies that the Value is a marshaled Policy message, and may be referred to by Key as a ModificationPolicy
         Chain = 1;    // Marshaled format for this type is yet to be determined
         Orderer = 2;  // Marshaled format for this type is yet to be determined
-        Fabric = 3;   // Marshaled format for this type is yet to be determined
+        Peer = 3;     // Marshaled format for this type is yet to be determined
+        MSP = 4;      // Marshaled MSPConfig proto
     }
     ChainHeader Header = 1;  // The header which ties this configuration to a particular chain
     ConfigurationType Type = 2;     // The type of configuration this is.
@@ -69,23 +78,27 @@ message ConfigurationItem {
 }
 
 message ConfigurationSignature {
-    bytes signatureHeader = 1;
-    bytes signature = 2; // Signature over the concatenation of configurationItem bytes and signatureHeader bytes
+    bytes signatureHeader = 1; // A marshaled SignatureHeader
+    bytes signature = 2;       // Signature over the concatenation of configurationItem bytes and signatureHeader bytes
 }
 
 // Policy expresses a policy which the orderer can evaluate, because there has been some desire expressed to support
 // multiple policy engines, this is typed as a oneof for now
 message Policy {
-    oneof Type {
-        SignaturePolicyEnvelope SignaturePolicy = 1;
+    enum PolicyType {
+        UNKNOWN = 0; // Reserved to check for proper initialization
+        SIGNATURE = 1;
+        MSP = 2;
     }
+    int32 type = 1; // For outside implementors, consider the first 1000 types reserved, otherwise one of PolicyType
+    bytes policy = 2;
 }
 
 // SignaturePolicyEnvelope wraps a SignaturePolicy and includes a version for future enhancements
 message SignaturePolicyEnvelope {
     int32 Version = 1;
     SignaturePolicy Policy = 2;
-    repeated bytes Identities = 3;
+    repeated MSPPrincipal Identities = 3;
 }
 
 // SignaturePolicy is a recursive message structure which defines a featherweight DSL for describing
@@ -103,4 +116,26 @@ message SignaturePolicy {
         int32 SignedBy = 1;
         NOutOf From = 2;
     }
+}
+
+
+// HashingAlgorithm is encoded into the configuration transaction as  a configuration item of type Chain
+// with a Key of "HashingAlgorithm" and a Value of  HashingAlgorithm as marshaled protobuf bytes
+message HashingAlgorithm {
+    // Currently supported algorithms are: SHAKE256
+    string name = 1;
+}
+
+// BlockDataHashingStructure is encoded into the configuration transaction as a configuration item of
+// type Chain with a Key of "BlockDataHashingStructure" and a Value of HashingAlgorithm as marshaled protobuf bytes
+message BlockDataHashingStructure {
+    // width specifies the width of the Merkle tree to use when computing the BlockDataHash
+    // in order to replicate flat hashing, set this width to MAX_UINT32
+    uint32 width  = 1;
+}
+
+// OrdererAddresses is encoded into the configuration transaction as a configuration item of type Chain
+// with a Key of "OrdererAddresses" and a Value of OrdererAddresses as marshaled protobuf bytes
+message OrdererAddresses {
+    repeated string addresses = 1;
 }

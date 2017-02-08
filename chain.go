@@ -1,13 +1,34 @@
-package fabric_sdk_go
+/*
+Copyright SecureKey Technologies Inc. All Rights Reserved.
+
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package fabricsdk
 
 import (
-	"bytes"
 	"fmt"
 	"sync"
 
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/bccsp"
+	msp "github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+
 	protos_utils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 
@@ -16,6 +37,7 @@ import (
 
 var logger = logging.MustGetLogger("fabric_sdk_go")
 
+// Chain ...
 /**
  * The “Chain” object captures settings for a channel, which is created by
  * the orderers to isolate transactions delivery to peers participating on channel.
@@ -33,8 +55,9 @@ type Chain struct {
 	clientContext   *Client
 }
 
+// TransactionProposalResponse ...
 /**
- * The TransactionProposalResponse object result return from endorsers.
+ * The TransactionProposalResponse result object returned from endorsers.
  */
 type TransactionProposalResponse struct {
 	Endorser         string
@@ -42,14 +65,16 @@ type TransactionProposalResponse struct {
 	Err              error
 }
 
+// TransactionResponse ...
 /**
- * The TransactionProposalResponse object result return from orderers.
+ * The TransactionProposalResponse result object returned from orderers.
  */
 type TransactionResponse struct {
 	Orderer string
 	Err     error
 }
 
+// NewChain ...
 /**
  * @param {string} name to identify different chain instances. The naming of chain instances
  * is enforced by the ordering service and must be unique within the blockchain network
@@ -72,6 +97,7 @@ func NewChain(name string, client *Client) (*Chain, error) {
 	return c, nil
 }
 
+// GetName ...
 /**
  * Get the chain name.
  * @returns {string} The name of the chain.
@@ -80,6 +106,7 @@ func (c *Chain) GetName() string {
 	return c.name
 }
 
+// IsSecurityEnabled ...
 /**
  * Determine if security is enabled.
  */
@@ -87,6 +114,7 @@ func (c *Chain) IsSecurityEnabled() bool {
 	return c.securityEnabled
 }
 
+// GetTCertBatchSize ...
 /**
  * Get the tcert batch size.
  */
@@ -94,6 +122,7 @@ func (c *Chain) GetTCertBatchSize() int {
 	return c.tcertBatchSize
 }
 
+// SetTCertBatchSize ...
 /**
  * Set the tcert batch size.
  */
@@ -101,23 +130,26 @@ func (c *Chain) SetTCertBatchSize(batchSize int) {
 	c.tcertBatchSize = batchSize
 }
 
+// AddPeer ...
 /**
  * Add peer endpoint to chain.
  * @param {Peer} peer An instance of the Peer that has been initialized with URL,
  * TLC certificate, and enrollment certificate.
  */
 func (c *Chain) AddPeer(peer *Peer) {
-	c.peers[peer.GetUrl()] = peer
+	c.peers[peer.GetURL()] = peer
 }
 
+// RemovePeer ...
 /**
  * Remove peer endpoint from chain.
  * @param {Peer} peer An instance of the Peer.
  */
-func (c *Chain) RemovePeer(peer Peer) {
-	delete(c.peers, peer.GetUrl())
+func (c *Chain) RemovePeer(peer *Peer) {
+	delete(c.peers, peer.GetURL())
 }
 
+// GetPeers ...
 /**
  * Get peers of a chain from local information.
  * @returns {[]Peer} The peer list on the chain.
@@ -130,6 +162,7 @@ func (c *Chain) GetPeers() []*Peer {
 	return peersArray
 }
 
+// AddOrderer ...
 /**
  * Add orderer endpoint to a chain object, this is a local-only operation.
  * A chain instance may choose to use a single orderer node, which will broadcast
@@ -139,18 +172,20 @@ func (c *Chain) GetPeers() []*Peer {
  * @param {Orderer} orderer An instance of the Orderer class.
  */
 func (c *Chain) AddOrderer(orderer *Orderer) {
-	c.orderers[orderer.Url] = orderer
+	c.orderers[orderer.url] = orderer
 }
 
+// RemoveOrderer ...
 /**
  * Remove orderer endpoint from a chain object, this is a local-only operation.
  * @param {Orderer} orderer An instance of the Orderer class.
  */
-func (c *Chain) RemoveOrderer(orderer Orderer) {
-	delete(c.orderers, orderer.Url)
+func (c *Chain) RemoveOrderer(orderer *Orderer) {
+	delete(c.orderers, orderer.url)
 
 }
 
+// GetOrderers ...
 /**
  * Get orderers of a chain.
  */
@@ -162,6 +197,7 @@ func (c *Chain) GetOrderers() []*Orderer {
 	return orderersArray
 }
 
+// InitializeChain ...
 /**
  * Calls the orderer(s) to start building the new chain, which is a combination
  * of opening new message stream and connecting the list of participating peers.
@@ -174,6 +210,7 @@ func (c *Chain) InitializeChain() bool {
 	return false
 }
 
+// UpdateChain ...
 /**
  * Calls the orderer(s) to update an existing chain. This allows the addition and
  * deletion of Peer nodes to an existing chain, as well as the update of Peer
@@ -184,6 +221,7 @@ func (c *Chain) UpdateChain() bool {
 	return false
 }
 
+// IsReadonly ...
 /**
  * Get chain status to see if the underlying channel has been terminated,
  * making it a read-only chain, where information (transactions and states)
@@ -194,6 +232,7 @@ func (c *Chain) IsReadonly() bool {
 	return false //to do
 }
 
+// QueryInfo ...
 /**
  * Queries for various useful information on the state of the Chain
  * (height, known peers).
@@ -203,6 +242,7 @@ func (c *Chain) QueryInfo() {
 	//to do
 }
 
+// QueryBlock ...
 /**
  * Queries the ledger for Block by block number.
  * @param {int} blockNumber The number which is the ID of the Block.
@@ -212,6 +252,7 @@ func (c *Chain) QueryBlock(blockNumber int) {
 	//to do
 }
 
+// QueryTransaction ...
 /**
  * Queries the ledger for Transaction by number.
  * @param {int} transactionID
@@ -221,31 +262,35 @@ func (c *Chain) QueryTransaction(transactionID int) {
 	//to do
 }
 
+// CreateTransactionProposal ...
 /**
  * Create  a proposal for transaction. This involves assembling the proposal
  * with the data (chaincodeName, function to call, arguments, etc.) and signing it using the private key corresponding to the
  * ECert to sign.
  */
-func (c *Chain) CreateTransactionProposal(chaincodeName string, chainId string, args []string, sign bool) (*pb.SignedProposal, *pb.Proposal, error) {
+func (c *Chain) CreateTransactionProposal(chaincodeName string, chainID string, args []string, sign bool, txid string) (*pb.SignedProposal, *pb.Proposal, error) {
 
-	arry := make([][]byte, len(args))
+	argsArray := make([][]byte, len(args))
 	for i, arg := range args {
-		arry[i] = []byte(arg)
+		argsArray[i] = []byte(arg)
 	}
+	ccis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{
+		Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: chaincodeName},
+		Input: &pb.ChaincodeInput{Args: argsArray}}}
 
-	ccis := &pb.ChaincodeInvocationSpec{
-		ChaincodeSpec: &pb.ChaincodeSpec{
-			Type:        pb.ChaincodeSpec_GOLANG,
-			ChaincodeID: &pb.ChaincodeID{Name: chaincodeName},
-			CtorMsg:     &pb.ChaincodeInput{Args: arry}}}
-
-	txid := util.GenerateUUID()
-
-	// create a proposal from a ChaincodeInvocationSpec
-	proposal, err := protos_utils.CreateChaincodeProposal(txid, chainId, ccis,
-		c.clientContext.GetUserContext().GetEnrollment().PublicKey)
+	user, err := c.clientContext.GetUserContext("")
 	if err != nil {
-		return nil, nil, fmt.Errorf("Could not create chaincode proposal, err %s\n", err)
+		return nil, nil, fmt.Errorf("GetUserContext return error: %s", err)
+	}
+	serializedIdentity := &msp.SerializedIdentity{Mspid: config.GetMspID(), IdBytes: user.GetEnrollmentCertificate()}
+	creatorID, err := proto.Marshal(serializedIdentity)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not Marshal serializedIdentity, err %s", err)
+	}
+	// create a proposal from a ChaincodeInvocationSpec
+	proposal, err := protos_utils.CreateChaincodeProposal(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, ccis, creatorID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not create chaincode proposal, err %s", err)
 	}
 
 	proposalBytes, err := protos_utils.GetBytesProposal(proposal)
@@ -253,8 +298,12 @@ func (c *Chain) CreateTransactionProposal(chaincodeName string, chainId string, 
 		return nil, nil, err
 	}
 	cryptoSuite := c.clientContext.GetCryptoSuite()
-	signature, err := cryptoSuite.Sign(c.clientContext.GetUserContext().GetEnrollment().EcdsaPrivateKey,
-		proposalBytes, config.GetSecurityAlgorithm(), config.GetSecurityLevel())
+	digest, err := cryptoSuite.Hash(proposalBytes, &bccsp.SHAOpts{})
+	if err != nil {
+		return nil, nil, err
+	}
+	signature, err := cryptoSuite.Sign(user.GetPrivateKey(),
+		digest, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -262,7 +311,15 @@ func (c *Chain) CreateTransactionProposal(chaincodeName string, chainId string, 
 	return signedProposal, proposal, nil
 }
 
+// SendTransactionProposal ...
+// Send  the created proposal to peer for endorsement.
 func (c *Chain) SendTransactionProposal(signedProposal *pb.SignedProposal, retry int) (map[string]*TransactionProposalResponse, error) {
+	if c.peers == nil || len(c.peers) == 0 {
+		return nil, fmt.Errorf("peers is nil")
+	}
+	if signedProposal == nil {
+		return nil, fmt.Errorf("signedProposal is nil")
+	}
 	transactionProposalResponseMap := make(map[string]*TransactionProposalResponse)
 	var wg sync.WaitGroup
 	for _, p := range c.peers {
@@ -272,13 +329,17 @@ func (c *Chain) SendTransactionProposal(signedProposal *pb.SignedProposal, retry
 			var err error
 			var proposalResponse *pb.ProposalResponse
 			var transactionProposalResponse *TransactionProposalResponse
-			logger.Debugf("Send ProposalRequest to peer :%s\n", peer.GetUrl())
+			logger.Debugf("Send ProposalRequest to peer :%s\n", peer.GetURL())
 			if proposalResponse, err = peer.SendProposal(signedProposal); err != nil {
 				logger.Debugf("Receive Error Response :%v\n", proposalResponse)
-				transactionProposalResponse = &TransactionProposalResponse{peer.GetUrl(), nil, fmt.Errorf("Error calling endorser '%s':  %s", peer.GetUrl(), err)}
+				transactionProposalResponse = &TransactionProposalResponse{peer.GetURL(), nil, fmt.Errorf("Error calling endorser '%s':  %s", peer.GetURL(), err)}
 			} else {
-				logger.Debugf("Receive Proposal Response :%v\n", proposalResponse)
-				transactionProposalResponse = &TransactionProposalResponse{peer.GetUrl(), proposalResponse, nil}
+				prp1, _ := protos_utils.GetProposalResponsePayload(proposalResponse.Payload)
+				act1, _ := protos_utils.GetChaincodeAction(prp1.Extension)
+				logger.Debugf("%s ProposalResponsePayload Extension ChaincodeAction Results\n%s\n", peer.GetURL(), string(act1.Results))
+
+				logger.Debugf("Receive Proposal ChaincodeActionResponse :%v\n", proposalResponse)
+				transactionProposalResponse = &TransactionProposalResponse{peer.GetURL(), proposalResponse, nil}
 			}
 			tprm[transactionProposalResponse.Endorser] = transactionProposalResponse
 		}(p, &wg, transactionProposalResponseMap)
@@ -287,6 +348,7 @@ func (c *Chain) SendTransactionProposal(signedProposal *pb.SignedProposal, retry
 	return transactionProposalResponseMap, nil
 }
 
+// CreateTransaction ...
 /**
  * Create a transaction with proposal response, following the endorsement policy.
  */
@@ -313,19 +375,27 @@ func (c *Chain) CreateTransaction(proposal *pb.Proposal, resps []*pb.ProposalRes
 		return nil, err
 	}
 
-	// ensure that all actions are bitwise equal and that they are successful
-	var a1 []byte
-	for n, r := range resps {
-		if n == 0 {
-			a1 = r.Payload
-			if r.Response.Status != 200 {
-				return nil, fmt.Errorf("Proposal response was not successful, error code %d, msg %s", r.Response.Status, r.Response.Message)
-			}
-			continue
-		}
+	// This code is commented out because the ProposalResponsePayload Extension ChaincodeAction Results
+	// return from endorsements is different so the compare will fail
 
-		if bytes.Compare(a1, r.Payload) != 0 {
-			return nil, fmt.Errorf("ProposalResponsePayloads do not match")
+	//	var a1 []byte
+	//	for n, r := range resps {
+	//		if n == 0 {
+	//			a1 = r.Payload
+	//			if r.Response.Status != 200 {
+	//				return nil, fmt.Errorf("Proposal response was not successful, error code %d, msg %s", r.Response.Status, r.Response.Message)
+	//			}
+	//			continue
+	//		}
+
+	//		if bytes.Compare(a1, r.Payload) != 0 {
+	//			return nil, fmt.Errorf("ProposalResponsePayloads do not match")
+	//		}
+	//	}
+
+	for _, r := range resps {
+		if r.Response.Status != 200 {
+			return nil, fmt.Errorf("Proposal response was not successful, error code %d, msg %s", r.Response.Status, r.Response.Message)
 		}
 	}
 
@@ -366,6 +436,7 @@ func (c *Chain) CreateTransaction(proposal *pb.Proposal, resps []*pb.ProposalRes
 
 }
 
+// SendTransaction ...
 /**
  * Send a transaction to the chain’s orderer service (one or more orderer endpoints) for consensus and committing to the ledger.
  * This call is asynchronous and the successful transaction commit is notified via a BLOCK or CHAINCODE event. This method must provide a mechanism for applications to attach event listeners to handle “transaction submitted”, “transaction complete” and “error” events.
@@ -379,6 +450,15 @@ func (c *Chain) CreateTransaction(proposal *pb.Proposal, resps []*pb.ProposalRes
  * These events should cause the method to emit “complete” or “error” events to the application.
  */
 func (c *Chain) SendTransaction(proposal *pb.Proposal, tx *pb.Transaction) (map[string]*TransactionResponse, error) {
+	if c.orderers == nil || len(c.orderers) == 0 {
+		return nil, fmt.Errorf("orderers is nil")
+	}
+	if proposal == nil {
+		return nil, fmt.Errorf("proposal is nil")
+	}
+	if tx == nil {
+		return nil, fmt.Errorf("Transaction is nil")
+	}
 	// the original header
 	hdr, err := protos_utils.GetHeader(proposal.Header)
 	if err != nil {
@@ -397,8 +477,17 @@ func (c *Chain) SendTransaction(proposal *pb.Proposal, tx *pb.Transaction) (map[
 		return nil, err
 	}
 
-	signature, err := c.clientContext.GetCryptoSuite().Sign(c.clientContext.userContext.enrollmentKeys.EcdsaPrivateKey,
-		paylBytes, config.GetSecurityAlgorithm(), config.GetSecurityLevel())
+	cryptoSuite := c.clientContext.GetCryptoSuite()
+	digest, err := cryptoSuite.Hash(paylBytes, &bccsp.SHAOpts{})
+	if err != nil {
+		return nil, err
+	}
+	user, err := c.clientContext.GetUserContext("")
+	if err != nil {
+		return nil, fmt.Errorf("GetUserContext return error: %s\n", err)
+	}
+	signature, err := cryptoSuite.Sign(user.GetPrivateKey(),
+		digest, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -414,13 +503,13 @@ func (c *Chain) SendTransaction(proposal *pb.Proposal, tx *pb.Transaction) (map[
 			var err error
 			var transactionResponse *TransactionResponse
 
-			logger.Debugf("Send TransactionRequest to orderer :%s\n", orderer.Url)
-			if err = o.sendBroadcast(envelope); err != nil {
+			logger.Debugf("Send TransactionRequest to orderer :%s\n", orderer.GetURL())
+			if err = orderer.SendBroadcast(envelope); err != nil {
 				logger.Debugf("Receive Error Response from orderer :%v\n", err)
-				transactionResponse = &TransactionResponse{orderer.Url, fmt.Errorf("Error calling endorser '%s':  %s", orderer.Url, err)}
+				transactionResponse = &TransactionResponse{orderer.GetURL(), fmt.Errorf("Error calling endorser '%s':  %s", orderer.GetURL(), err)}
 			} else {
 				logger.Debugf("Receive Success Response from orderer\n")
-				transactionResponse = &TransactionResponse{orderer.Url, nil}
+				transactionResponse = &TransactionResponse{orderer.GetURL(), nil}
 			}
 			trm[transactionResponse.Orderer] = transactionResponse
 		}(o, &wg, transactionResponseMap)

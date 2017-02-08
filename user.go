@@ -1,12 +1,29 @@
-package fabric_sdk_go
+/*
+Copyright SecureKey Technologies Inc. All Rights Reserved.
+
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package fabricsdk
 
 import (
-	"crypto/ecdsa"
-	"crypto/x509"
-	"encoding/pem"
-	"fmt"
+	"github.com/hyperledger/fabric/bccsp"
 )
 
+// User ...
 /**
  * The User struct represents users that have been enrolled and represented by
  * an enrollment certificate (ECert) and a signing key. The ECert must have
@@ -27,19 +44,17 @@ import (
 type User struct {
 	name                  string
 	roles                 []string
-	enrollmentKeys        *Enrollment
-	enrollmentCertificate *pem.Block
+	PrivateKey            bccsp.Key // ****This key is temporary We use it to sign transaction until we have tcerts
+	enrollmentCertificate []byte
 }
 
-/**
- * This structure temporary until we have tcerts
- */
-type Enrollment struct {
-	PrivateKey      []byte
-	PublicKey       []byte
-	EcdsaPrivateKey *ecdsa.PrivateKey
+// UserJSON ...
+type UserJSON struct {
+	PrivateKeySKI         []byte
+	EnrollmentCertificate []byte
 }
 
+// NewUser ...
 /**
  * Constructor for a user.
  *
@@ -49,6 +64,7 @@ func NewUser(name string) *User {
 	return &User{name: name}
 }
 
+// GetName ...
 /**
  * Get the user name.
  * @returns {string} The user name.
@@ -57,6 +73,7 @@ func (u *User) GetName() string {
 	return u.name
 }
 
+// GetRoles ...
 /**
  * Get the roles.
  * @returns {[]string} The roles.
@@ -65,6 +82,7 @@ func (u *User) GetRoles() []string {
 	return u.roles
 }
 
+// SetRoles ...
 /**
  * Set the roles.
  * @param roles {[]string} The roles.
@@ -73,45 +91,39 @@ func (u *User) SetRoles(roles []string) {
 	u.roles = roles
 }
 
+// GetEnrollmentCertificate ...
 /**
  * Returns the underlying ECert representing this user’s identity.
  */
-func (u *User) GetEnrollmentCertificate() *pem.Block {
+func (u *User) GetEnrollmentCertificate() []byte {
 	return u.enrollmentCertificate
 }
 
+// SetEnrollmentCertificate ...
 /**
  * Set the user’s Enrollment Certificate.
  */
-func (u *User) SetEnrollmentCertificate(pem *pem.Block) {
-	u.enrollmentCertificate = pem
+func (u *User) SetEnrollmentCertificate(cert []byte) {
+	u.enrollmentCertificate = cert
 }
 
+// SetPrivateKey ...
 /**
  * deprecated.
  */
-func (u *User) SetEnrollment(privateKey []byte, publicKey []byte) error {
-	pemkey, _ := pem.Decode(privateKey)
-	enrollmentPrivateKey, err := x509.ParsePKCS8PrivateKey(pemkey.Bytes)
-	if err != nil {
-		return err
-	}
-	ecPrivateKey, ok := enrollmentPrivateKey.(*ecdsa.PrivateKey)
-	if !ok {
-		return fmt.Errorf("key not EC")
-	}
-
-	u.enrollmentKeys = &Enrollment{PrivateKey: privateKey, PublicKey: publicKey, EcdsaPrivateKey: ecPrivateKey}
-	return nil
+func (u *User) SetPrivateKey(privateKey bccsp.Key) {
+	u.PrivateKey = privateKey
 }
 
+// GetPrivateKey ...
 /**
  * deprecated.
  */
-func (u *User) GetEnrollment() *Enrollment {
-	return u.enrollmentKeys
+func (u *User) GetPrivateKey() bccsp.Key {
+	return u.PrivateKey
 }
 
+// GenerateTcerts ...
 /**
  * Gets a batch of TCerts to use for transaction. there is a 1-to-1 relationship between
  * TCert and Transaction. The TCert can be generated locally by the SDK using the user’s crypto materials.

@@ -16,6 +16,21 @@ limitations under the License.
 
 package msp
 
+import (
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/msp"
+)
+
+// FIXME: we need better comments on the interfaces!!
+// FIXME: we need better comments on the interfaces!!
+// FIXME: we need better comments on the interfaces!!
+
+//Common is implemented by both MSPManger and MSP
+type Common interface {
+	// DeserializeIdentity deserializes an identity
+	DeserializeIdentity(serializedIdentity []byte) (Identity, error)
+}
+
 // Membership service provider APIs for Hyperledger Fabric:
 //
 // By "membership service provider" we refer to an abstract component of the
@@ -28,13 +43,59 @@ package msp
 // a way such that alternate implementations of this can be smoothly plugged in
 // without modifying the core of transaction processing components of the system.
 //
-// This file contains interfaces that are shared within the peer and client API
+// This file includes Membership service provider interface that covers the
+// needs of a peer membership service provider interface.
+
+// MSPManager is an interface defining a manager of one or more MSPs. This
+// essentially acts as a mediator to MSP calls and routes MSP related calls
+// to the appropriate MSP.
+// This object is immutable, it is initialized once and never changed.
+type MSPManager interface {
+
+	// Common interface needs to be implemented by MSPManager
+	Common
+
+	// Setup the MSP manager instance according to configuration information
+	Setup(msps []*msp.MSPConfig) error
+
+	// GetMSPs Provides a list of Membership Service providers
+	GetMSPs() (map[string]MSP, error)
+}
+
+// MSP is the minimal Membership Service Provider Interface to be implemented
+// to accommodate peer functionality
+type MSP interface {
+
+	// Common interface needs to be implemented by MSP
+	Common
+
+	// Setup the MSP instance according to configuration information
+	Setup(config *msp.MSPConfig) error
+
+	// GetType returns the provider type
+	GetType() ProviderType
+
+	// GetIdentifier returns the provider identifier
+	GetIdentifier() (string, error)
+
+	// GetSigningIdentity returns a signing identity corresponding to the provided identifier
+	GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error)
+
+	// GetDefaultSigningIdentity returns the default signing identity
+	GetDefaultSigningIdentity() (SigningIdentity, error)
+
+	// Validate checks whether the supplied identity is valid
+	Validate(id Identity) error
+
+	// SatisfiesPrincipal checks whether the identity matches
+	// the description supplied in MSPPrincipal. The check may
+	// involve a byte-by-byte comparison (if the principal is
+	// a serialized identity) or may require MSP validation
+	SatisfiesPrincipal(id Identity, principal *common.MSPPrincipal) error
+}
+
+// From this point on, there are interfaces that are shared within the peer and client API
 // of the membership service provider.
-// In the same folder:
-//   (i) peersmp.go includes description of peer-specific MSP/Manager
-//   (ii)appmsp.go includes description of an extension of PeerManager/PeerMSP
-//       attempting to cover application-specific membership service provider
-//       functionalities.
 
 // Identity interface defining operations associated to a "certificate".
 // That is, the public part of the identity could be thought to be a certificate,
@@ -43,21 +104,20 @@ package msp
 // with, and verifying signatures that correspond to these certificates.///
 type Identity interface {
 
-	// Identifier returns the identifier of that identity
-	Identifier() *IdentityIdentifier
+	// GetIdentifier returns the identifier of that identity
+	GetIdentifier() *IdentityIdentifier
 
-	// Retrieve the provider identifier this identity belongs to
-	// from the previous field
+	// GetMSPIdentifier returns the MSP Id for this instance
 	GetMSPIdentifier() string
 
-	// This uses the rules that govern this identity to validate it.
+	// Validate uses the rules that govern this identity to validate it.
 	// E.g., if it is a fabric TCert implemented as identity, validate
 	// will check the TCert signature against the assumed root certificate
 	// authority.
-	Validate() (bool, error)
+	Validate() error
 
 	// TODO: Fix this comment
-	// ParticipantID would return the participant this identity is related to
+	// GetOrganizationUnits returns the participant this identity is related to
 	// as long as this is public information. In certain implementations
 	// this could be implemented by certain attributes that are publicly
 	// associated to that identity, or the identifier of the root certificate
@@ -69,21 +129,27 @@ type Identity interface {
 	//    CA used by organization "Organization 1", could be provided in the clear
 	//    as part of that tcert structure that this call would be able to return.
 	// TODO: check if we need a dedicated type for participantID properly namespaced by the associated provider identifier.
-	ParticipantID() string
+	GetOrganizationUnits() string
 
 	// TODO: Discuss GetOU() further.
 
 	// Verify a signature over some message using this identity as reference
-	Verify(msg []byte, sig []byte) (bool, error)
+	Verify(msg []byte, sig []byte) error
 
 	// VerifyOpts a signature over some message using this identity as reference
-	VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) (bool, error)
+	VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) error
 
 	// VerifyAttributes verifies attributes given proofs
-	VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) (bool, error)
+	VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) error
 
 	// Serialize converts an identity to bytes
 	Serialize() ([]byte, error)
+
+	// SatisfiesPrincipal checks whether this instance matches
+	// the description supplied in MSPPrincipal. The check may
+	// involve a byte-by-byte comparison (if the principal is
+	// a serialized identity) or may require MSP validation
+	SatisfiesPrincipal(principal *common.MSPPrincipal) error
 }
 
 // SigningIdentity is an extension of Identity to cover signing capabilities.
@@ -101,7 +167,7 @@ type SigningIdentity interface {
 	// SignOpts the message with options
 	SignOpts(msg []byte, opts SignatureOpts) ([]byte, error)
 
-	// NewAttributeProof creates a proof for an attribute
+	// GetAttributeProof creates a proof for an attribute
 	GetAttributeProof(spec *AttributeProofSpec) (proof []byte, err error)
 
 	// GetPublicVersion returns the public parts of this identity
@@ -116,7 +182,7 @@ type SigningIdentity interface {
 type ImportRequest struct {
 
 	// IdentityProvider to enroll with
-	Idp ProviderIdentifier
+	Idp string
 
 	// The certificate to import
 	IdentityDesc []byte
@@ -159,25 +225,16 @@ type AttributeProofSpec struct {
 // Structures defining the identifiers for identity providers and members
 // and members that belong to them.
 
-// ProviderIdentifier is a holder for an identity provider identifier
-// that should be subjected to certain structure conventions.
-type ProviderIdentifier struct {
-	// Returns the identifier for an identity provider
-	Value string
-}
-
 // IdentityIdentifier is a holder for the identifier of a specific
 // identity, naturally namespaced, by its provider identifier.
 type IdentityIdentifier struct {
-	// The identifier of the associated membership service provider
-	Mspid ProviderIdentifier
-	// Returns the identifier for an identity within a provider
-	Value string
-}
 
-//func toStringMemberIdentifier(mi MemberIdentifier) string {
-//	return "alice"
-//}
+	// The identifier of the associated membership service provider
+	Mspid string
+
+	// The identifier for an identity within a provider
+	Id string
+}
 
 // ProviderType indicates the type of an identity provider
 type ProviderType int
@@ -187,14 +244,3 @@ const (
 	FABRIC ProviderType = iota // MSP is of FABRIC type
 	OTHER                      // MSP is of OTHER TYPE
 )
-
-// This struct represents an Identity
-// (with its MSP identifier) to be used
-// to serialize it and deserialize it
-type SerializedIdentity struct {
-	// The identifier of the associated membership service provider
-	Mspid ProviderIdentifier
-
-	// the Identity, serialized according to the rules of its MPS
-	IdBytes []byte
-}
