@@ -58,11 +58,6 @@ func InitConfig(configFile string) error {
 		} else {
 			return fmt.Errorf("Fatal error config file: %v", err)
 		}
-		//		viper.WatchConfig()
-		//		viper.OnConfigChange(func(e fsnotify.Event) {
-		//			log.Infof("Config file changed: %s", e.Name)
-		//		})
-
 	}
 
 	backend := logging.NewLogBackend(os.Stderr, "", 0)

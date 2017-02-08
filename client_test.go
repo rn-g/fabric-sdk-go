@@ -57,7 +57,7 @@ func TestClientMethods(t *testing.T) {
 		t.Fatalf("client.GetUserContext should return nil user")
 	}
 
-	//Client tests: Should return erro "user is nil"
+	//Client tests: Should return error "user is nil"
 	err = client.SetUserContext(nil, false)
 	if err == nil {
 		t.Fatalf("client.SetUserContext didn't return error")
@@ -66,7 +66,7 @@ func TestClientMethods(t *testing.T) {
 		t.Fatalf("client.SetUserContext didn't return right error")
 	}
 
-	//Client tests: getUserContext with no context in memory or persisted returns null
+	//Client tests: getUserContext with no context in memory or persisted returns nil
 	user, err = client.GetUserContext("someUser")
 	if err != nil {
 		t.Fatalf("client.GetUserContext return error[%s]", err)

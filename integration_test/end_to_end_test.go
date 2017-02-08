@@ -34,6 +34,7 @@ import (
 	msp "github.com/hyperledger/fabric-sdk-go/msp"
 	"github.com/hyperledger/fabric/bccsp"
 	bccspFactory "github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/util"
 
 	"github.com/hyperledger/fabric/bccsp/sw"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -128,8 +129,6 @@ func TestChainCodeInvoke(t *testing.T) {
 		t.Fatalf("invoke return error: %v", err)
 	}
 
-	//	fmt.Println("need to wait now for the committer to catch up")
-	//	time.Sleep(time.Second * 20)
 	valueAfterInvoke, err := getQueryValue(t, querychain)
 	if err != nil {
 		t.Errorf("getQueryValue return error: %v", err)
@@ -153,7 +152,10 @@ func getQueryValue(t *testing.T, chain *fabric_sdk.Chain) (string, error) {
 	args = append(args, "invoke")
 	args = append(args, "query")
 	args = append(args, "b")
-	signedProposal, _, _, err := chain.CreateTransactionProposal(chainCodeId, chainId, args, true)
+
+	txid := util.GenerateUUID()
+
+	signedProposal, _, err := chain.CreateTransactionProposal(chainCodeId, chainId, args, true, txid)
 	if err != nil {
 		return "", fmt.Errorf("SendTransactionProposal return error: %v", err)
 	}
@@ -179,7 +181,10 @@ func invoke(t *testing.T, chain *fabric_sdk.Chain, eventHub *events.EventHub) er
 	args = append(args, "a")
 	args = append(args, "b")
 	args = append(args, "1")
-	signedProposal, proposal, txId, err := chain.CreateTransactionProposal(chainCodeId, chainId, args, true)
+
+	txid := util.GenerateUUID()
+
+	signedProposal, proposal, err := chain.CreateTransactionProposal(chainCodeId, chainId, args, true, txid)
 	if err != nil {
 		return fmt.Errorf("SendTransactionProposal return error: %v", err)
 	}

@@ -245,7 +245,7 @@ func (eventHub *EventHub) UnregisterTxEvent(txID string) {
  */
 func (eventHub *EventHub) txCallback(block *common.Block, txID string, errMsg string) {
 	logger.Debugf("txCallback block=%v\n", block)
-	//var eh = this;
+
 	for _, v := range block.Data.Data {
 		if env, err := utils.GetEnvelopeFromBlock(v); err != nil {
 			return

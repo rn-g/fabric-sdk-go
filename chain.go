@@ -25,13 +25,11 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/util"
 	msp "github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	protos_utils "github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 
 	config "github.com/hyperledger/fabric-sdk-go/config"
 )
@@ -58,7 +56,7 @@ type Chain struct {
 
 // TransactionProposalResponse ...
 /**
- * The TransactionProposalResponse object result return from endorsers.
+ * The TransactionProposalResponse result object returned from endorsers.
  */
 type TransactionProposalResponse struct {
 	Endorser         string
@@ -68,7 +66,7 @@ type TransactionProposalResponse struct {
 
 // TransactionResponse ...
 /**
- * The TransactionProposalResponse object result return from orderers.
+ * The TransactionProposalResponse result object returned from orderers.
  */
 type TransactionResponse struct {
 	Orderer string
@@ -269,49 +267,47 @@ func (c *Chain) QueryTransaction(transactionID int) {
  * with the data (chaincodeName, function to call, arguments, etc.) and signing it using the private key corresponding to the
  * ECert to sign.
  */
-func (c *Chain) CreateTransactionProposal(chaincodeName string, chainID string, args []string, sign bool) (*pb.SignedProposal, *pb.Proposal, string, error) {
+func (c *Chain) CreateTransactionProposal(chaincodeName string, chainID string, args []string, sign bool, txid string) (*pb.SignedProposal, *pb.Proposal, error) {
 
-	arry := make([][]byte, len(args))
+	argsArray := make([][]byte, len(args))
 	for i, arg := range args {
-		arry[i] = []byte(arg)
+		argsArray[i] = []byte(arg)
 	}
 	ccis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{
 		Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: chaincodeName},
-		Input: &pb.ChaincodeInput{Args: arry}}}
-
-	txid := util.GenerateUUID()
+		Input: &pb.ChaincodeInput{Args: argsArray}}}
 
 	user, err := c.clientContext.GetUserContext("")
 	if err != nil {
-		return nil, nil, "", fmt.Errorf("GetUserContext return error: %s\n", err)
+		return nil, nil, fmt.Errorf("GetUserContext return error: %s", err)
 	}
 	serializedIdentity := &msp.SerializedIdentity{Mspid: config.GetMspID(), IdBytes: user.GetEnrollmentCertificate()}
 	creatorID, err := proto.Marshal(serializedIdentity)
 	if err != nil {
-		return nil, nil, "", fmt.Errorf("Could not Marshal serializedIdentity, err %s\n", err)
+		return nil, nil, fmt.Errorf("Could not Marshal serializedIdentity, err %s", err)
 	}
 	// create a proposal from a ChaincodeInvocationSpec
 	proposal, err := protos_utils.CreateChaincodeProposal(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, ccis, creatorID)
 	if err != nil {
-		return nil, nil, "", fmt.Errorf("Could not create chaincode proposal, err %s\n", err)
+		return nil, nil, fmt.Errorf("Could not create chaincode proposal, err %s", err)
 	}
 
 	proposalBytes, err := protos_utils.GetBytesProposal(proposal)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, err
 	}
 	cryptoSuite := c.clientContext.GetCryptoSuite()
 	digest, err := cryptoSuite.Hash(proposalBytes, &bccsp.SHAOpts{})
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, err
 	}
 	signature, err := cryptoSuite.Sign(user.GetPrivateKey(),
 		digest, nil)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, err
 	}
 	signedProposal := &pb.SignedProposal{ProposalBytes: proposalBytes, Signature: signature}
-	return signedProposal, proposal, txid, nil
+	return signedProposal, proposal, nil
 }
 
 // SendTransactionProposal ...
