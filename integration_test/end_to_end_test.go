@@ -182,9 +182,9 @@ func invoke(t *testing.T, chain *fabric_sdk.Chain, eventHub *events.EventHub) er
 	args = append(args, "b")
 	args = append(args, "1")
 
-	txid := util.GenerateUUID()
+	txId := util.GenerateUUID()
 
-	signedProposal, proposal, err := chain.CreateTransactionProposal(chainCodeId, chainId, args, true, txid)
+	signedProposal, proposal, err := chain.CreateTransactionProposal(chainCodeId, chainId, args, true, txId)
 	if err != nil {
 		return fmt.Errorf("SendTransactionProposal return error: %v", err)
 	}
