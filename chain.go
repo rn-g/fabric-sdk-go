@@ -30,6 +30,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	protos_utils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/op/go-logging"
 
 	config "github.com/hyperledger/fabric-sdk-go/config"
 )
