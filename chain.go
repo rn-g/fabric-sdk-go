@@ -265,10 +265,10 @@ func (c *Chain) QueryTransaction(transactionID int) {
 // CreateTransactionProposal ...
 /**
  * Create  a proposal for transaction. This involves assembling the proposal
- * with the data (chaincodeName, function to call, arguments, etc.) and signing it using the private key corresponding to the
+ * with the data (chaincodeName, function to call, arguments, transient data, etc.) and signing it using the private key corresponding to the
  * ECert to sign.
  */
-func (c *Chain) CreateTransactionProposal(chaincodeName string, chainID string, args []string, sign bool, txid string) (*pb.SignedProposal, *pb.Proposal, error) {
+func (c *Chain) CreateTransactionProposal(chaincodeName string, chainID string, args []string, sign bool, txid string, transientData []byte) (*pb.SignedProposal, *pb.Proposal, error) {
 
 	argsArray := make([][]byte, len(args))
 	for i, arg := range args {
@@ -288,7 +288,7 @@ func (c *Chain) CreateTransactionProposal(chaincodeName string, chainID string, 
 		return nil, nil, fmt.Errorf("Could not Marshal serializedIdentity, err %s", err)
 	}
 	// create a proposal from a ChaincodeInvocationSpec
-	proposal, err := protos_utils.CreateChaincodeProposal(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, ccis, creatorID)
+	proposal, err := protos_utils.CreateChaincodeProposalWithTransient(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, ccis, creatorID, transientData)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Could not create chaincode proposal, err %s", err)
 	}

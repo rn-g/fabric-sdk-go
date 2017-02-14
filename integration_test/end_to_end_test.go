@@ -155,7 +155,7 @@ func getQueryValue(t *testing.T, chain *fabric_sdk.Chain) (string, error) {
 
 	txid := util.GenerateUUID()
 
-	signedProposal, _, err := chain.CreateTransactionProposal(chainCodeId, chainId, args, true, txid)
+	signedProposal, _, err := chain.CreateTransactionProposal(chainCodeId, chainId, args, true, txid, nil)
 	if err != nil {
 		return "", fmt.Errorf("SendTransactionProposal return error: %v", err)
 	}
@@ -184,7 +184,7 @@ func invoke(t *testing.T, chain *fabric_sdk.Chain, eventHub *events.EventHub) er
 
 	txId := util.GenerateUUID()
 
-	signedProposal, proposal, err := chain.CreateTransactionProposal(chainCodeId, chainId, args, true, txId)
+	signedProposal, proposal, err := chain.CreateTransactionProposal(chainCodeId, chainId, args, true, txId, nil)
 	if err != nil {
 		return fmt.Errorf("SendTransactionProposal return error: %v", err)
 	}
